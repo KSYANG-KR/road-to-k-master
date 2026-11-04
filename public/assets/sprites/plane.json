@@ -1,0 +1,32 @@
+{
+ "frames": {
+  "plane": {
+   "frame": {
+    "x": 1,
+    "y": 1,
+    "w": 580,
+    "h": 199
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 580,
+    "h": 199
+   },
+   "sourceSize": {
+    "w": 580,
+    "h": 199
+   }
+  }
+ },
+ "meta": {
+  "image": "plane.png",
+  "size": {
+   "w": 582,
+   "h": 201
+  },
+  "scale": 1
+ }
+}

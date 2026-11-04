@@ -1,0 +1,332 @@
+{
+ "frames": {
+  "donut2": {
+   "frame": {
+    "x": 1,
+    "y": 1,
+    "w": 50,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 50,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 50,
+    "h": 44
+   }
+  },
+  "coffee": {
+   "frame": {
+    "x": 69,
+    "y": 1,
+    "w": 45,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 58
+   }
+  },
+  "softcream": {
+   "frame": {
+    "x": 137,
+    "y": 1,
+    "w": 35,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 35,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 35,
+    "h": 62
+   }
+  },
+  "cake": {
+   "frame": {
+    "x": 205,
+    "y": 1,
+    "w": 50,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 50,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 50,
+    "h": 52
+   }
+  },
+  "popsicle2": {
+   "frame": {
+    "x": 273,
+    "y": 1,
+    "w": 29,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 29,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 29,
+    "h": 57
+   }
+  },
+  "croissant": {
+   "frame": {
+    "x": 341,
+    "y": 1,
+    "w": 57,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 44
+   }
+  },
+  "candy": {
+   "frame": {
+    "x": 409,
+    "y": 1,
+    "w": 56,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 31
+   }
+  },
+  "cookie": {
+   "frame": {
+    "x": 477,
+    "y": 1,
+    "w": 47,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 47
+   }
+  },
+  "cupcake": {
+   "frame": {
+    "x": 1,
+    "y": 73,
+    "w": 46,
+    "h": 63
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 63
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 63
+   }
+  },
+  "juice": {
+   "frame": {
+    "x": 69,
+    "y": 73,
+    "w": 46,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 61
+   }
+  },
+  "milkshake": {
+   "frame": {
+    "x": 137,
+    "y": 73,
+    "w": 33,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 70
+   }
+  },
+  "bubbletea": {
+   "frame": {
+    "x": 205,
+    "y": 73,
+    "w": 39,
+    "h": 66
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 39,
+    "h": 66
+   },
+   "sourceSize": {
+    "w": 39,
+    "h": 66
+   }
+  },
+  "callbell": {
+   "frame": {
+    "x": 273,
+    "y": 73,
+    "w": 53,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 47
+   }
+  },
+  "sujeo": {
+   "frame": {
+    "x": 341,
+    "y": 73,
+    "w": 55,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 55,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 55,
+    "h": 56
+   }
+  },
+  "rice": {
+   "frame": {
+    "x": 409,
+    "y": 73,
+    "w": 52,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 52,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 52,
+    "h": 48
+   }
+  },
+  "teapot": {
+   "frame": {
+    "x": 477,
+    "y": 73,
+    "w": 66,
+    "h": 50
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 50
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 50
+   }
+  }
+ },
+ "meta": {
+  "image": "food.png",
+  "size": {
+   "w": 544,
+   "h": 144
+  },
+  "scale": 1
+ }
+}
