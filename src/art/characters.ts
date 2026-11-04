@@ -119,6 +119,7 @@ const SKIN: Record<Skin, Color> = {
   dark: 0x82543a,
 };
 const GIRLS = new Set(['hana', 'amara', 'mei', 'sofia', 'emma', 'server', 'stylist']);
+export const isGirl = (id: string) => GIRLS.has(id);
 const IRIS: Record<string, Color> = { hana: 0x9a5a34, leo: 0x3f86d8, sofia: 0x3a9aa8, emma: 0x5f9a3e, james: 0x5a70b0, mei: 0x6a4a3a };
 const INK = 0x2a1830;
 const MOUTH = 0x8a2a3e;

@@ -1,41 +1,42 @@
 // #06 / #12 / #17 스테이지 맵: 관광지도 → 한강 도시 → 쇼핑몰 단면
 import Phaser from 'phaser';
+import { pixText } from '../art/pixeltext';
 import { BaseScene } from '../core/BaseScene';
 import { state, STAGES } from '../core/state';
 import { playMusic, sfx } from '../core/audio';
 import { director } from '../core/director';
-import { stageBanner, tag, txt, panel, COL, PAL, ACC, SUB, W } from '../core/ui';
+import { stageBanner, tag, txt, panel, rrect, COL, PAL, ACC, SUB, TYPE, W } from '../core/ui';
 import { sparkles } from '../core/fx';
 
 type Pt = [number, number];
-interface NodeDef { key: string; at: Pt; tag: Pt; path?: Pt[] } // path: 이전 노드에서 오는 경유점
+interface NodeDef { key: string; at: Pt; tag: Pt; area: [number, number, number, number]; path?: Pt[] } // path: 이전 노드에서 오는 경유점, area: 건물 그림 영역(클릭)
 
 const MAPS: { bg: string; music: string; start: Pt; nodes: NodeDef[]; elevator?: boolean }[] = [
   {
     bg: 'map1', music: 'stage1', start: [92, 316],
     nodes: [
-      { key: 'hanok', at: [178, 316], tag: [130, 250] },
-      { key: 'jjimjil', at: [180, 117], tag: [96, 132], path: [[120, 290], [80, 220], [120, 150]] },
-      { key: 'temple', at: [400, 210], tag: [430, 178], path: [[230, 140], [270, 200], [330, 214]] },
-      { key: 'palace', at: [500, 318], tag: [560, 240], path: [[420, 250], [440, 300]] },
-      { key: 'park', at: [467, 103], tag: [520, 120], path: [[560, 290], [550, 180], [520, 110]] },
+      { key: 'hanok', at: [178, 316], tag: [130, 250], area: [55, 220, 155, 85] },
+      { key: 'jjimjil', at: [180, 117], tag: [96, 132], area: [90, 30, 110, 85], path: [[120, 290], [80, 220], [120, 150]] },
+      { key: 'temple', at: [400, 210], tag: [430, 178], area: [355, 105, 105, 90], path: [[230, 140], [270, 200], [330, 214]] },
+      { key: 'palace', at: [500, 318], tag: [560, 240], area: [380, 200, 240, 120], path: [[420, 250], [440, 300]] },
+      { key: 'park', at: [467, 103], tag: [520, 120], area: [430, 10, 160, 90], path: [[560, 290], [550, 180], [520, 110]] },
     ],
   },
   {
     bg: 'map2', music: 'stage2', start: [150, 340],
     nodes: [
-      { key: 'pcbang', at: [80, 208], tag: [40, 228], path: [[120, 260]] },
-      { key: 'hangang', at: [330, 214], tag: [300, 236], path: [[160, 230], [250, 170], [300, 190]] },
-      { key: 'cvs', at: [470, 300], tag: [510, 330], path: [[380, 270], [430, 290]] },
+      { key: 'pcbang', at: [80, 208], tag: [40, 228], area: [0, 115, 82, 80], path: [[120, 260]] },
+      { key: 'hangang', at: [330, 214], tag: [300, 236], area: [250, 60, 220, 180], path: [[160, 230], [250, 170], [300, 190]] },
+      { key: 'cvs', at: [470, 300], tag: [510, 330], area: [470, 225, 100, 75], path: [[380, 270], [430, 290]] },
     ],
   },
   {
     bg: 'map3', music: 'stage3', start: [90, 338], elevator: true,
     nodes: [
-      { key: 'hansik', at: [300, 338], tag: [580, 300] },
-      { key: 'salon', at: [300, 262], tag: [580, 226] },
-      { key: 'photo', at: [300, 188], tag: [580, 152] },
-      { key: 'dance', at: [300, 112], tag: [580, 78] },
+      { key: 'hansik', at: [300, 338], tag: [580, 300], area: [160, 270, 370, 68] },
+      { key: 'salon', at: [300, 262], tag: [580, 226], area: [160, 195, 370, 73] },
+      { key: 'photo', at: [300, 188], tag: [580, 152], area: [160, 120, 370, 72] },
+      { key: 'dance', at: [300, 112], tag: [580, 78], area: [160, 40, 370, 78] },
     ],
   },
 ];
@@ -93,15 +94,22 @@ export class WorldMap extends BaseScene {
       }
       // 장소 태그
       const t = this.placeCard(n.tag[0], n.tag[1], `${state.stage + 1}-${i + 1}`, m.label, m.en, done ? 'done' : isNext ? 'next' : 'lock');
-      const hit = this.add.zone(nx, ny, 40, 40).setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => { if (isNext && !director.auto) this.enter(i); });
-      t.on('pointerdown', () => { if (isNext && !director.auto) this.enter(i); });
+      // 건물 그림·핀·장소 카드 어디를 눌러도 반응
+      const [ax, ay, aw, ah] = n.area;
+      const zones = [this.add.zone(ax, ay, aw, ah).setOrigin(0), this.add.zone(nx, ny, 40, 40)];
+      zones.forEach((z) => z.setDepth(1.5).setInteractive({ useHandCursor: true }));
+      t.input!.cursor = 'pointer';
+      const tap = () => this.tapPlace(i, done ? 'done' : isNext ? 'next' : 'lock', t);
+      [...zones, t].forEach((o) => {
+        o.on('pointerdown', tap);
+        o.on('pointerover', () => this.tweens.add({ targets: t, scale: 1.04, duration: 100 }));
+        o.on('pointerout', () => this.tweens.add({ targets: t, scale: 1, duration: 100 }));
+      });
     });
 
     // 엘리베이터 (스테이지3) + 건물 간판
     if (map.elevator) {
-      txt(this, 312, 15.5, 'K-STYLE MALL', { px: 10, weight: 900, color: '#2a2f6a', spacing: 1.5 }).setOrigin(0.5).setDepth(2);
-      txt(this, 312, 26, '케이 스타일 몰', { px: 6.5, weight: 700, color: '#c94466', spacing: 1 }).setOrigin(0.5).setDepth(2);
+      pixText(this, 313, 20, [{ t: 'K-STYLE MALL', font: 'g11b', color: '#2a2f6a', spacing: 1 }, { t: '케이 스타일 몰', font: 'g9', color: '#d0466a' }], { gap: 1, depth: 2 });
       this.elevatorCar = this.add.graphics().setDepth(5);
       this.drawElevator(this.floorY(Math.max(0, this.currentFloor() - 1)));
     }
@@ -121,7 +129,7 @@ export class WorldMap extends BaseScene {
       await director.waitInput(this, 2200);
       this.tweens.add({ targets: banner, alpha: 0, scale: 0.8, duration: 250, onComplete: () => banner.destroy() });
     }
-    if (!director.auto && next) tag(this, W / 2, 350, 'Click the glowing spot or press ENTER  ·  빛나는 장소를 클릭하거나 ENTER', { bg: PAL.ink, fg: '#ffffff', oy: 1, depth: 20, pop: true });
+    if (!director.auto && next) tag(this, W / 2, 350, '빛나는 장소를 누르거나 ENTER  ·  Tap the glowing place or press ENTER', { bg: PAL.ink, fg: '#ffffff', oy: 1, depth: 20, pop: true });
     const idx = next ? stage.indexOf(next) : -1;
     if (idx < 0) return;
     const go = () => this.enter(idx);
@@ -133,28 +141,46 @@ export class WorldMap extends BaseScene {
   // 장소 카드: 번호 칩 + 한글 이름 + 영문 이름
   placeCard(x: number, y: number, num: string, ko: string, en: string, st: 'done' | 'next' | 'lock') {
     const c = this.add.container(0, 0).setDepth(3);
-    const t1 = txt(this, 0, 0, ko, { bold: true, color: st === 'lock' ? '#d6daf0' : '#ffffff' });
-    const t2 = txt(this, 0, 0, en, { size: 10, color: st === 'next' ? ACC : st === 'done' ? '#7ef0c4' : SUB });
+    const t1 = txt(this, 0, 0, ko, { px: TYPE.body + 0.5, weight: 700, color: st === 'lock' ? '#d6daf0' : '#ffffff' });
+    const t2 = txt(this, 0, 0, en, { px: TYPE.small, weight: 600, color: st === 'next' ? ACC : st === 'done' ? '#7ef0c4' : SUB });
     const chipW = 22;
     const w = Math.ceil(Math.max(t1.width, t2.width)) + chipW + 16, h = 32;
     const left = Phaser.Math.Clamp(Math.round(x - w / 2), 4, W - 4 - w), top = Math.round(y - h / 2);
     const g = this.add.graphics();
     panel(g, left, top, w, h);
     const chipC = st === 'done' ? PAL.mint : st === 'next' ? PAL.acc : PAL.line;
-    g.fillStyle(chipC); g.fillRect(left + 4, top + 4, chipW, h - 8);
-    const nt = txt(this, left + 4 + chipW / 2, top + h / 2, num, { size: 10, color: st === 'lock' ? '#d6daf0' : '#0b0f24' }).setOrigin(0.5);
+    g.fillStyle(chipC); rrect(g, left + 4, top + 4, chipW, h - 8, 4);
+    const nt = txt(this, left + 4 + chipW / 2, top + h / 2, num, { px: TYPE.small, weight: 800, color: st === 'lock' ? '#d6daf0' : '#0b0f24' }).setOrigin(0.5);
     t1.setPosition(left + chipW + 10, top + 4);
     t2.setPosition(left + chipW + 10, top + 18);
     c.add([g, nt, t1, t2]);
     c.setSize(w, h);
     if (st === 'next') {
       const glow = this.add.graphics();
-      glow.lineStyle(1, PAL.acc, 1); glow.strokeRect(left - 1, top - 1, w + 2, h + 2);
+      glow.lineStyle(1.25, PAL.acc, 1); glow.strokeRoundedRect(left - 1.5, top - 1.5, w + 3, h + 3, 6);
       c.addAt(glow, 0);
       this.tweens.add({ targets: glow, alpha: 0.2, yoyo: true, repeat: -1, duration: 600 });
     }
     c.setInteractive(new Phaser.Geom.Rectangle(left, top, w, h), Phaser.Geom.Rectangle.Contains);
     return c;
+  }
+
+  // 장소를 눌렀을 때: 다음 장소면 입장, 아니면 짧은 안내
+  toast?: Phaser.GameObjects.Container;
+  tapPlace(i: number, st: 'done' | 'next' | 'lock', card: Phaser.GameObjects.Container) {
+    if (director.auto || this.entering) return;
+    if (st === 'next') { this.enter(i); return; }
+    sfx.move();
+    const next = state.nextMission();
+    const msg = st === 'done'
+      ? '이미 다녀온 곳이에요  ·  Already visited'
+      : `먼저 ${next?.label ?? ''}부터 가 봐요  ·  Visit the ${next?.en ?? ''} first`;
+    this.toast?.destroy();
+    const b = card.getBounds();
+    this.toast = tag(this, b.centerX, Math.max(14, b.top - 12), msg, { depth: 30, pop: true });
+    const t = this.toast;
+    this.tweens.add({ targets: t, alpha: 0, delay: 1400, duration: 250, onComplete: () => t.destroy() });
+    this.tweens.add({ targets: card, x: card.x + 3, yoyo: true, repeat: 2, duration: 50 });
   }
 
   elevatorCar?: Phaser.GameObjects.Graphics;

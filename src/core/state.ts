@@ -38,8 +38,8 @@ export const STAGES: MissionInfo[][] = [
   ],
   [
     { key: 'pcbang', scene: 'PcBang', label: 'PC방', en: 'PC bang', xp: 300 },
-    { key: 'hangang', scene: 'Hangang', label: '한강러닝', en: 'Hangang run', xp: 400 },
-    { key: 'cvs', scene: 'Cvs', label: '편의점', en: 'Conv. store', xp: 300 },
+    { key: 'hangang', scene: 'Hangang', label: '한강 러닝', en: 'Hangang run', xp: 400 },
+    { key: 'cvs', scene: 'Cvs', label: '편의점', en: 'Convenience store', xp: 300 },
   ],
   [
     { key: 'hansik', scene: 'Hansik', label: '한식당', en: 'Restaurant', xp: 250 },
@@ -54,6 +54,7 @@ class GameState {
   xp = 0; // 현재 레벨 안에서의 XP
   cleared = new Set<string>();
   maxed = false;
+  hero = 'hana'; // 고른 캐릭터 id (캐릭터 선택에서 정함)
   // 미션별 별점 (1~3)
   stars: Record<string, number> = {};
 

@@ -2,14 +2,14 @@
 import Phaser from 'phaser';
 import { sfx } from './audio';
 import { director } from './director';
-import { panel, lightPanel, rrect, txt, PAL, INK, TXT, SUB, ACC, GOLD, EN, TYPE, W, H, type ItemRef } from './ui';
+import { panel, lightPanel, rrect, txt, balance, PAL, INK, TXT, SUB, ACC, GOLD, EN, TYPE, W, H, type ItemRef } from './ui';
 
 // ---------------- 말풍선 ----------------
 // (x, y) = 꼬리 끝. 한국어 한 줄 + 영어 한 줄, 아이콘(요청 아이템)을 함께 띄울 수 있다.
 export function speech(scene: Phaser.Scene, x: number, y: number, ko: string, en = '', o: { icon?: ItemRef; depth?: number; pop?: boolean } = {}) {
   const c = scene.add.container(Math.round(x), Math.round(y)).setDepth(o.depth ?? 975);
-  const t1 = ko ? txt(scene, 0, 0, ko, { px: TYPE.body, weight: 700, color: INK }) : undefined;
-  const t2 = en ? txt(scene, 0, 0, en, { px: TYPE.small + 0.5, weight: 500, color: '#4b5378' }) : undefined;
+  const t1 = ko ? balance(txt(scene, 0, 0, '', { px: TYPE.body, weight: 700, color: INK, lineSpacing: 1 }), ko, 196) : undefined;
+  const t2 = en ? balance(txt(scene, 0, 0, '', { px: TYPE.small + 0.5, weight: 500, color: '#4b5378', lineSpacing: 1 }), en, 196) : undefined;
   let im: Phaser.GameObjects.Image | undefined;
   let iconW = 0;
   if (o.icon) {
@@ -49,8 +49,8 @@ export async function tipCard(scene: Phaser.Scene, ko: string, en: string) {
   const w = 404;
   const c = scene.add.container(W / 2, 150).setDepth(985);
   const dim = scene.add.rectangle(0, 0, W * 4, H * 4, 0x070a1a, 0.35);
-  const t1 = txt(scene, 0, 0, ko, { px: TYPE.body + 0.5, weight: 700, color: TXT, wordWrap: { width: w - 72, useAdvancedWrap: true }, lineSpacing: 2 });
-  const t2 = txt(scene, 0, 0, en, { px: TYPE.body - 0.5, weight: 500, color: EN, wordWrap: { width: w - 72, useAdvancedWrap: true }, lineSpacing: 1.5 });
+  const t1 = balance(txt(scene, 0, 0, '', { px: TYPE.body + 0.5, weight: 700, color: TXT, lineSpacing: 2 }), ko, w - 72);
+  const t2 = balance(txt(scene, 0, 0, '', { px: TYPE.body - 0.5, weight: 500, color: EN, lineSpacing: 1.5 }), en, w - 72);
   const h = Math.max(72, 28 + t1.height + 5 + t2.height + 14);
   const g = scene.add.graphics();
   panel(g, -w / 2, -h / 2, w, h);
@@ -68,7 +68,7 @@ export async function tipCard(scene: Phaser.Scene, ko: string, en: string) {
   t2.setPosition(-w / 2 + 52, -h / 2 + 24 + t1.height + 5);
   c.add([dim, g, b, head, head2, t1, t2]);
   if (!director.auto) {
-    const k = txt(scene, w / 2 - 12, h / 2 - 7, '다음  NEXT  →', { px: TYPE.cap, weight: 700, color: ACC, spacing: 1 }).setOrigin(1, 1);
+    const k = txt(scene, w / 2 - 12, h / 2 - 7, 'NEXT  ·  다음  →', { px: TYPE.cap, weight: 700, color: ACC, spacing: 1 }).setOrigin(1, 1);
     scene.tweens.add({ targets: k, alpha: 0.4, yoyo: true, repeat: -1, duration: 500 });
     c.add(k);
   }
@@ -139,7 +139,7 @@ export function timingGame(scene: Phaser.Scene, ko: string, en: string): Promise
     g.fillStyle(PAL.acc); g.fillRoundedRect(-130, -26, 2, 52, 1);
     const title = txt(scene, -122, -25, ko, { px: TYPE.body + 0.5, weight: 700, color: TXT });
     const sub = txt(scene, -122 + title.width + 6, -25 + (title.height - 11) / 2 + 1, en, { px: TYPE.small + 0.5, weight: 500, color: EN });
-    const keyHint = txt(scene, 122, 14, director.auto ? '' : 'SPACE · TAP   타이밍에 맞춰 누르기', { px: TYPE.cap, weight: 700, color: ACC, spacing: 0.5 }).setOrigin(1, 0);
+    const keyHint = txt(scene, 122, 14, director.auto ? '' : 'SPACE · TAP  ·  타이밍에 맞춰 눌러요', { px: TYPE.cap, weight: 700, color: ACC, spacing: 0.5 }).setOrigin(1, 0);
     // 게이지
     const bw = 236, bx = -118, by = -6;
     const zoneC = Phaser.Math.Between(-70, 70);
@@ -166,7 +166,7 @@ export function timingGame(scene: Phaser.Scene, ko: string, en: string): Promise
       const d = Math.abs(cur.x - zoneC);
       const r: Timing = d <= pz / 2 + 1 ? 'perfect' : d <= gz / 2 ? 'good' : 'miss';
       if (r === 'miss') sfx.wrong(); else sfx.clear();
-      const label = r === 'perfect' ? 'PERFECT  완벽!' : r === 'good' ? 'GOOD  좋아요' : 'MISS  아쉬워요';
+      const label = r === 'perfect' ? 'PERFECT  완벽해요' : r === 'good' ? 'GOOD  좋아요' : 'MISS  아쉬워요';
       const jt = txt(scene, 0, -46, label, { px: 16, weight: 900, color: r === 'perfect' ? GOLD : r === 'good' ? '#7ef0c4' : '#ff9aa8', stroke: '#0b0f24', strokeThickness: 3, spacing: 1 }).setOrigin(0.5);
       c.add(jt);
       jt.setScale(0.6);

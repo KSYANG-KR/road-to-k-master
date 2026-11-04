@@ -1,6 +1,7 @@
 // #25~#29 한강 야외 스크린(명예 한국인 + 실사/하이라이트 영상), #30~#31 엔딩(틸트업 불꽃놀이 + 로고)
 import Phaser from 'phaser';
 import { BaseScene } from '../core/BaseScene';
+import { pixText } from '../art/pixeltext';
 import { DialogBox, bigText, button, tag, txt, W, H } from '../core/ui';
 import { playMusic, sfx } from '../core/audio';
 import { director } from '../core/director';
@@ -53,9 +54,10 @@ export class Ending extends BaseScene {
     trophy.fillRect(-17, -12, 4, 8); trophy.fillRect(13, -12, 4, 8);
     trophy.fillStyle(0xfff3a0); trophy.fillRect(-9, -12, 3, 10);
     trophy.fillStyle(0xe8303a); trophy.fillRect(-2, -9, 4, 4);
-    const unlock = txt(this, SCR.x + SCR.w / 2, SCR.y + 56, 'TITLE UNLOCKED  ·  칭호 획득', { size: 10, color: '#ffd166', spacing: 1 }).setOrigin(0.5);
-    const hk = txt(this, SCR.x + SCR.w / 2, SCR.y + 80, 'HONORARY KOREAN', { px: 19, weight: 900, color: '#ffffff', spacing: 1 }).setOrigin(0.5);
-    const hke = txt(this, SCR.x + SCR.w / 2, SCR.y + 102, '명예 한국인', { size: 10, color: '#aeb6d9' }).setOrigin(0.5);
+    const cx = SCR.x + SCR.w / 2;
+    const unlock = pixText(this, cx, SCR.y + 60, [{ t: 'TITLE UNLOCKED · 칭호 획득', font: 'g9', color: '#ffd166' }]);
+    const hk = pixText(this, cx, SCR.y + 80, [{ t: 'HONORARY KOREAN', font: 'g14', color: '#ffffff', bold: true, spacing: 1 }], { shadow: '#3a2a6a' });
+    const hke = pixText(this, cx, SCR.y + 100, [{ t: '명예 한국인', font: 'g11b', color: '#ff9ab0' }]);
     screen.add([tg, trophy, unlock, hk, hke]);
     [trophy, unlock, hk, hke].forEach((o, i) => { o.setAlpha(0); this.tweens.add({ targets: o, alpha: 1, delay: 300 + i * 250, duration: 300 }); });
     this.time.addEvent({ delay: 250, repeat: 12, callback: () => sparkles(this, SCR.x + Phaser.Math.Between(20, SCR.w - 20), SCR.y + Phaser.Math.Between(10, 60), 3, [0xffe066, 0xffffff], 12) });
@@ -69,7 +71,7 @@ export class Ending extends BaseScene {
     const clips = await loadClipList();
     screen.removeAll(true);
     this.tweens.add({ targets: d, alpha: 1, duration: 300 });
-    d.say('나도 몰랐던 내 안의 K-캐릭터를 발견할 시간', 'Your Korean side, unlocked!', 22);
+    d.say('나도 몰랐던 내 안의 한국인을 만났어요', 'You discovered the Korean in you.', 22);
     if (clips.length) {
       for (const c of clips) {
         const v = this.add.video(SCR.x + SCR.w / 2, SCR.y + SCR.h / 2).setDepth(10);
@@ -87,11 +89,17 @@ export class Ending extends BaseScene {
       }
     } else {
       // 실사 영상이 아직 없으면: 여정 하이라이트 몽타주 (미션 배경 + 스탬프)
-      const reel: [string, string][] = [['hanok_int', '온돌 Ondol'], ['jjimjil', '찜질방 Jjimjilbang'], ['palace', '고궁 한복 Hanbok'], ['hangang', '한강 러닝 Hangang run'], ['hansik', '한식 K-food'], ['stage', 'K-POP 댄스 Dance']];
+      const reel: [string, string][] = [['hanok_int', '온돌 Ondol'], ['jjimjil', '찜질방 Jjimjilbang'], ['palace', '한복 Hanbok'], ['hangang', '한강 러닝 Hangang run'], ['hansik', '한식 Korean food'], ['stage', '케이팝 댄스 K-pop dance']];
       for (const [ri, [bg, label]] of reel.entries()) {
         const fit = W / this.textures.get(bg).getSourceImage().width;
         const im = this.add.image(SCR.x + SCR.w / 2, SCR.y + SCR.h / 2, bg).setScale(0.42 * fit).setDepth(10);
-        const lb = tag(this, SCR.x + 6, SCR.y + 5, `● REC  ${label}`, { bg: 0xe8303a, ox: 0, oy: 0, depth: 11 });
+        const lb = this.add.container(SCR.x + 6, SCR.y + 5).setDepth(11);
+        const lt = pixText(this, 0, 0, [{ t: `● REC  ${label}`, font: 'g9', color: '#ffffff' }]);
+        const lw = lt.width + 8;
+        const lg = this.add.graphics();
+        lg.fillStyle(0x7a0a1a); lg.fillRect(0, 0, lw, 14); lg.fillStyle(0xe8303a); lg.fillRect(0, 0, lw, 13);
+        lt.setPosition(Math.round(lw / 2), 7);
+        lb.add([lg, lt]);
         screen.add([im, lb]);
         this.tweens.add({ targets: im, scale: 0.46 * fit, duration: 1300 });
         crew.forEach((s, i) => (i + ri) % 3 === 0 && this.play(s, 'backCheer'));
@@ -161,7 +169,7 @@ export class Outro extends BaseScene {
     this.input.keyboard?.once('keydown-ENTER', again);
     this.input.keyboard?.once('keydown-SPACE', again);
     // 이번 여행에서 모은 별
-    const total = tag(this, W / 2, H - 82, `★ ${state.totalStars} / ${state.maxStars}   모은 별  STARS COLLECTED`, { fg: '#ffd166', bold: true, size: 11, depth: 120 });
+    const total = tag(this, W / 2, H - 82, `모은 별  Stars collected   ★ ${state.totalStars} / ${state.maxStars}`, { fg: '#ffd166', bold: true, size: 11, depth: 120 });
     btn.setAlpha(0); total.setAlpha(0);
     this.tweens.add({ targets: [btn, total], alpha: 1, duration: 500 });
   }

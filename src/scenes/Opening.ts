@@ -5,9 +5,10 @@ import { DialogBox, bigText, button, tag, txt, PAL, TYPE, W, H, ZOOM } from '../
 import { playMusic, sfx } from '../core/audio';
 import { director } from '../core/director';
 import { sparkles } from '../core/fx';
-import { CAST, LINEUP } from '../art/cast';
+import { CAST, LINEUP, PROFILE, setHero } from '../art/cast';
 import { state } from '../core/state';
 import { suitcaseTex } from '../art/props';
+import { pixText } from '../art/pixeltext';
 
 // 여행 가방 (코드 픽셀)
 export function suitcase(scene: Phaser.Scene, x: number, y: number, color: number) {
@@ -41,16 +42,19 @@ export class Arrival extends BaseScene {
     this.bg('airport');
     // 창밖으로 착륙하는 비행기
     const plane = this.add.image(170, 96, 'plane', 'plane').setScale(0.11).setAngle(6).setDepth(-50);
-    // 안내판 문구
-    txt(this, 320, 31, 'WELCOME TO KOREA', { px: 15, weight: 800, color: '#ffffff', spacing: 1 }).setOrigin(0.5).setDepth(-40);
-    txt(this, 320, 49, '대한민국에 오신 것을 환영합니다', { px: TYPE.small, weight: 600, color: '#b9c6ff', spacing: 0.5 }).setOrigin(0.5).setDepth(-40);
-    // 세로 배너: 한글은 세로쓰기, 영어는 아래 가로 한 줄
-    const banner = (x: number, ko: string, en: string) => {
-      txt(this, x, 40, ko.split('').join('\n'), { px: 11, weight: 800, color: '#2f3f86', align: 'center', lineSpacing: 1 }).setOrigin(0.5, 0).setDepth(-40);
-      txt(this, x, 140, en, { px: 5.5, weight: 700, color: '#5a68a8', spacing: 0.5 }).setOrigin(0.5).setDepth(-40);
-    };
-    banner(59, '어서오세요', 'WELCOME');
-    banner(580, '즐거운여행', 'ENJOY KOREA');
+    // 안내판 (면: x 186~452, y 26~62 → 중심 319, 44) — 배경 도트와 같은 크기의 픽셀 글자로 그려 넣음
+    pixText(this, 319, 44, [
+      { t: 'WELCOME TO KOREA', font: 'g14', color: '#f4f8ff', spacing: 1, bold: true },
+      { t: '대한민국에 오신 것을 환영합니다', font: 'g11', color: '#8fb8ff' },
+    ], { gap: 5, shadow: '#0a1d48', depth: -40 });
+    // 세로 배너 (면: 폭 38, y 26~151): 한글 세로쓰기 + 영문 세로 쌓기
+    const banner = (x: number, ko: string, en: string) => pixText(this, x, 89, [
+      { t: ko, font: 'g11b', color: '#2c3c88', vertical: true, vgap: 2 },
+      { t: '♥', font: 'g9', color: '#ff6b8a' },
+      { t: en, font: 'g7', color: '#6c7bc0', vertical: true, vgap: 0 },
+    ], { gap: 5, depth: -40 });
+    banner(60, '환영해요', 'WELCOME');
+    banner(581, '즐거운여행', 'ENJOY');
     this.reveal();
     await this.wait(300);
     this.tweens.add({ targets: plane, x: 330, y: 150, angle: 0, duration: 2200, ease: 'Sine.Out' });
@@ -77,7 +81,7 @@ export class Arrival extends BaseScene {
     sparkles(this, 320, 160, 30, undefined, 200);
     await this.wait(700);
     const d = new DialogBox(this, 130, 306, 380, 40);
-    await d.say('대한민국 곳곳의 미션을 수행해 명예 한국인이 되어보세요!', 'Take on missions across Korea and become an honorary Korean!');
+    await d.say('한국 곳곳에서 미션을 해내고 명예 한국인이 되어 보세요!', 'Complete missions across Korea and become an honorary Korean.');
     await director.waitInput(this, 1600);
     await d.say('준비됐나요? 출발해요!', "Ready? Let's go!", 40);
     // 카메라가 무리 쪽으로 살짝 줌인 (#04)
@@ -92,6 +96,7 @@ export class Title extends BaseScene {
 
   async create() {
     playMusic('title');
+    setHero('hana');
     this.bg('title');
     // 로고 가독성을 위한 상단 그라데이션
     const shadeTop = this.add.graphics().setDepth(5);
@@ -102,7 +107,7 @@ export class Title extends BaseScene {
     const deco = this.add.graphics();
     deco.fillStyle(PAL.acc); deco.fillRect(320 - 80, 24, 24, 1); deco.fillRect(320 + 56, 24, 24, 1);
     const k = bigText(this, 320, 70, 'K-MASTER', 4, '#ffffff', '#151a33', '#c94466');
-    const sub = tag(this, 320, 118, 'Become an honorary Korean   ·   명예 한국인 되기', { depth: 0, fg: '#e6eaff' });
+    const sub = tag(this, 320, 118, '명예 한국인이 되어 보세요   ·   Become an honorary Korean', { depth: 0, fg: '#e6eaff' });
     logo.add([road, deco, k, sub]);
     logo.setAlpha(0).setY(-10);
     this.tweens.add({ targets: logo, alpha: 1, y: 0, duration: 700, ease: 'Quad.Out' });
@@ -169,8 +174,6 @@ export class CastRoll extends BaseScene {
     for (let x = -H; x < worldW; x += 28) g.fillPoints([{ x, y: 0 }, { x: x + 12, y: 0 }, { x: x + 12 + 250, y: 250 }, { x: x + 250, y: 250 }], true);
     g.fillStyle(0x080b1c); g.fillRect(0, 300, worldW, H - 300);
     g.fillStyle(PAL.line); g.fillRect(0, 300, worldW, 1);
-    const colors = [0xff6fa5, 0xffa040, 0x5aaeff, 0xb57bff, 0x3fd6bd, 0xff7a7a, 0x7ad04a, 0x7a8aa8];
-    const tags = [['CURIOUS', '호기심 왕'], ['FOODIE', '미식가'], ['GAMER', '게이머'], ['DREAMER', '몽상가'], ['LEADER', '리더'], ['ARTIST', '아티스트'], ['RUNNER', '러너'], ['WORKER', '직장인']];
     LINEUP.forEach((id, i) => {
       const x = 120 + i * spacing;
       // 스포트라이트
@@ -182,25 +185,13 @@ export class CastRoll extends BaseScene {
       this.play(s, i % 2 ? 'wave' : 'idle');
       this.time.delayedCall(600 + i * 700, () => { this.hop(s, 10); this.emote(s, (['♪', '♥', '!', '★'] as const)[i % 4]); });
       // 역할(영/한) → 이름 순으로 가운데 정렬. 카메라가 가로로 흐르므로 화면 가장자리 고정(clamp)은 끈다
-      tag(this, x, 46, `${tags[i][0]}  ${tags[i][1]}`, { bg: colors[i], depth: 5, clamp: false, bold: true });
+      tag(this, x, 46, `${PROFILE[id].role[0]}  ·  ${PROFILE[id].role[1]}`, { bg: PAL.acc, depth: 5, clamp: false, bold: true });
       txt(this, x, 58, CAST[id].name, { px: 22, weight: 900, color: '#ffffff', spacing: 1 }).setOrigin(0.5, 0).setDepth(5);
-      if (id === 'hana') {
-        const you = tag(this, x, 96, '1P  ·  YOU  ·  나', { bg: PAL.surf, fg: '#7cf0ff', depth: 5, clamp: false, bold: true });
-        this.tweens.add({ targets: you, alpha: 0.4, yoyo: true, repeat: -1, duration: 450 });
-      }
     });
     this.cameras.main.setBounds(0, 0, worldW, H);
     await this.reveal();
     this.camPan(120 + 7 * spacing - 200, H / 2, 6000);
-    await this.wait(6200);
-    const hero = 120 + 4 * spacing;
-    this.camPan(hero, H / 2, 900);
-    await this.wait(1000);
-    sfx.select();
-    bigText(this, hero, 150, 'START!', 3, '#ffd166', '#151a33', '#8a5a10').setScrollFactor(1).setDepth(20);
-    tag(this, hero, 184, '여행을 시작해요!  Let the journey begin!', { depth: 20, clamp: false, pop: true });
-    await this.wait(900);
-    state.reset();
-    await this.goto('WorldMap', {}, 'flash');
+    await this.wait(6400);
+    await this.goto('CharSelect', {}, 'fade');
   }
 }

@@ -11,7 +11,7 @@ import { ambientFor } from './ambient';
 import { speech, tipCard, timingGame, Lives, type Timing } from './widgets';
 
 // 오답일 때 랜덤으로 보여줄 한/영 반응
-const OOPS: [string, string][] = [['음… 그건 아닌 것 같아!', 'Hmm… not that one!'], ['다시 골라볼까?', 'Let\'s try another one.'], ['앗, 그게 아니야!', 'Oops, that\'s not it!']];
+const OOPS: [string, string][] = [['음, 그건 아닌 것 같아', 'Hmm, not that one.'], ['다른 걸 골라 볼까?', 'Let\'s try another one.'], ['앗, 그게 아니야', 'Oops, that\'s not it.']];
 
 export const ATLASES = ['items1', 'items2', 'items3', 'food', 'hansikfood', 'plane'];
 
@@ -313,7 +313,7 @@ export class BaseScene extends Phaser.Scene {
       bar.setTimer(Math.max(0, left / limit));
       if (left <= 0) {
         sfx.wrong();
-        react('시간이 다 됐어요! 힌트를 볼까?', 'Time\'s up! Here\'s a hint.');
+        react('시간이 다 됐어! 힌트 줄게', 'Time\'s up! Here\'s a hint.');
         miss(); showHint();
         left = limit;
       }

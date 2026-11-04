@@ -1,5 +1,5 @@
 // 등장인물 정의 (PPTX T&M 8인 라인업을 참고해 새로 디자인)
-import type { CharDef, Outfit } from './characters';
+import { isGirl, type CharDef, type Outfit } from './characters';
 
 export const CAST: Record<string, CharDef> = {
   hana: {
@@ -38,11 +38,39 @@ export const CAST: Record<string, CharDef> = {
 
 export const LINEUP = ['amara', 'mei', 'leo', 'sofia', 'hana', 'emma', 'kofi', 'james'];
 
+// 캐릭터 소개 (역할 영/한 + 한 줄 소개 한/영)
+export const PROFILE: Record<string, { role: [string, string]; bio: [string, string] }> = {
+  amara: { role: ['CURIOUS', '호기심쟁이'], bio: ['새로운 건 뭐든 해 보고 싶어요', 'Wants to try everything new'] },
+  mei: { role: ['FOODIE', '미식가'], bio: ['맛집 지도 없이는 여행 안 해요', 'Never travels without a food map'] },
+  leo: { role: ['GAMER', '게이머'], bio: ['한국 PC방이 제일 궁금해요', 'Can\'t wait to see a Korean PC bang'] },
+  sofia: { role: ['DREAMER', '몽상가'], bio: ['K-드라마 속 장면을 찾아왔어요', 'Came looking for K-drama scenes'] },
+  hana: { role: ['LEADER', '리더'], bio: ['친구들을 이끄는 여행 리더예요', 'The one who leads the trip'] },
+  emma: { role: ['ARTIST', '아티스트'], bio: ['예쁜 사진과 그림을 사랑해요', 'Loves pretty photos and art'] },
+  kofi: { role: ['RUNNER', '러너'], bio: ['한강 러닝이 버킷리스트예요', 'A Hangang run is on the bucket list'] },
+  james: { role: ['WORKER', '직장인'], bio: ['휴가 내고 온 바쁜 직장인이에요', 'A busy worker on a well-earned break'] },
+};
+
+// ---- 주인공 선택 ----
+// 장면 스크립트는 주인공 자리를 'hana' 로 쓴다. 다른 캐릭터를 고르면 CAST 의 두 자리를 맞바꿔
+// 'hana' 자리에 고른 캐릭터가, 원래 그 캐릭터 자리에 하나가 들어가게 한다 (텍스처는 각자의 id 로 구워져 섞이지 않음)
+const ORIGINAL: Record<string, CharDef> = { ...CAST };
+export let HERO = 'hana';
+export function setHero(id: string) {
+  Object.assign(CAST, ORIGINAL);
+  HERO = CAST[id] ? id : 'hana';
+  if (HERO !== 'hana') { CAST.hana = ORIGINAL[HERO]; CAST[HERO] = ORIGINAL.hana; }
+}
+export const heroName = () => CAST.hana.name;
+
 // ---- 미션/레벨별 의상 ----
 export const OUTFITS = {
-  // 레벨 카드 의상 (주인공)
-  hanaLv1: CAST.hana.outfit,
-  hanaLv2: { top: 'hanbokF', topColor: 0xf6a6b8, topColor2: 0xd83a5a, bottom: 'chima', bottomColor: 0x2b3a8c, shoes: 0xffffff, acc: ['ribbon'], accColor: 0xd83a5a } as Outfit,
+  // 레벨 카드 의상 (주인공) — Lv1 은 고른 캐릭터의 평소 옷, Lv2 한복은 성별에 맞춰
+  get hanaLv1(): Outfit { return CAST.hana.outfit; },
+  get hanaLv2(): Outfit {
+    return isGirl(CAST.hana.id)
+      ? { top: 'hanbokF', topColor: 0xf6a6b8, topColor2: 0xd83a5a, bottom: 'chima', bottomColor: 0x2b3a8c, shoes: 0xffffff, acc: ['ribbon'], accColor: 0xd83a5a }
+      : { top: 'hanbokM', topColor: 0xf4f4f4, topColor2: 0x2b3a8c, bottom: 'baji', bottomColor: 0x2b3a8c, shoes: 0x2b2420 };
+  },
   hanaLv3: { top: 'crop', topColor: 0x1e1e2a, bottom: 'baggy', bottomColor: 0x1e1e2a, shoes: 0xffffff, acc: ['headphones'] } as Outfit,
   hanaMax: { top: 'crop', topColor: 0x2a3a8c, bottom: 'baggy', bottomColor: 0x4a6fd0, shoes: 0xffffff, acc: ['crown'] } as Outfit,
 
@@ -84,3 +112,12 @@ export const NPC: Record<string, CharDef> = {
     outfit: { top: 'runvest', topColor: 0x2a9a7a, topColor2: 0xffffff, bottom: 'pants', bottomColor: 0x2b2b38, shoes: 0xffffff },
   },
 };
+
+// 입는 사람의 성별에 맞게 한복·교복을 바꿔 준다 (주인공을 바꿔도 어색하지 않게)
+export function fitGender(o: Outfit, id: string): Outfit {
+  const girl = isGirl(id);
+  if (o.top === 'hanbokF' && !girl) return OUTFITS.hanbokM(0xe6ecf6, o.bottomColor ?? 0x2a3a8a, o.bottomColor ?? 0x2a3a8a);
+  if (o.top === 'hanbokM' && girl) return OUTFITS.hanbokF(o.topColor, 0x2b3a8c, 0xd83a5a);
+  if (o.top === 'uniform') return girl ? OUTFITS.uniformF : OUTFITS.uniformM;
+  return o;
+}

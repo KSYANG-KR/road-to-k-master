@@ -11,20 +11,30 @@
     @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-Bold.woff2') format('woff2'); font-weight: 700; font-display: block; }
     @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-ExtraBold.woff2') format('woff2'); font-weight: 800; font-display: block; }
     @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-Black.woff2') format('woff2'); font-weight: 900; font-display: block; }
+    /* 게임 속 간판·배너 같은 '그림 속 글자' 전용 픽셀 폰트 */
+    @font-face { font-family: 'Galmuri11B'; src: url('./assets/fonts/Galmuri11-Bold.woff2') format('woff2'); font-display: block; }
+    @font-face { font-family: 'Galmuri11'; src: url('./assets/fonts/Galmuri11.woff2') format('woff2'); font-display: block; }
+    @font-face { font-family: 'Galmuri9'; src: url('./assets/fonts/Galmuri9.woff2') format('woff2'); font-display: block; }
+    @font-face { font-family: 'Galmuri7'; src: url('./assets/fonts/Galmuri7.woff2') format('woff2'); font-display: block; }
+    @font-face { font-family: 'Galmuri14'; src: url('./assets/fonts/Galmuri14.woff2') format('woff2'); font-display: block; }
     html, body { margin: 0; height: 100%; background: #120f26; overflow: hidden; touch-action: none; }
     #game { width: 100%; height: 100%; }
     #game canvas { image-rendering: auto; }
-    #rotate { display: none; position: fixed; inset: 0; z-index: 10; background: #120f26; color: #fff;
-      font-family: 'Pretendard', system-ui, sans-serif; font-weight: 600; align-items: center; justify-content: center; flex-direction: column; gap: 12px; text-align: center; }
-    #rotate .icon { font-size: 40px; animation: rot 1.6s infinite; }
+    /* 세로 화면: 막지 않고, 게임 위 빈 공간에 '가로로 돌리면 더 크게' 안내만 (탭하면 닫힘) */
+    #rotate { display: none; position: fixed; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 10;
+      align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; background: rgba(21, 26, 51, 0.92); border: 1px solid #3c4674;
+      color: #fff; font-family: 'Pretendard', system-ui, sans-serif; font-size: 13px; line-height: 1.35; white-space: nowrap; cursor: pointer; }
+    #rotate .icon { font-size: 20px; animation: rot 1.6s infinite; }
+    #rotate small { color: #d4daf7; font-weight: 500; }
     @keyframes rot { 0%, 30% { transform: rotate(0) } 60%, 100% { transform: rotate(90deg) } }
     @media (orientation: portrait) and (max-width: 820px) { #rotate { display: flex; } }
+    #rotate.closed { display: none !important; }
     body.recording #rotate { display: none !important; }
   </style>
 </head>
 <body>
   <div id="game"></div>
-  <div id="rotate"><div class="icon">📱</div><div>화면을 가로로 돌려주세요<br/>Please rotate your device</div></div>
+  <div id="rotate" onclick="this.classList.add('closed')"><div class="icon">📱</div><div><b>가로로 돌리면 더 크게 볼 수 있어요</b><br/><small>Rotate your phone for a bigger view</small></div></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

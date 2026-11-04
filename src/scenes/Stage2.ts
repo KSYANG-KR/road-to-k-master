@@ -1,8 +1,9 @@
 // Stage 2 (Lv.2 K-PLAYER) 미션: PC방 → 한강 러닝 → 편의점 황금조합
 import Phaser from 'phaser';
+import { pixText } from '../art/pixeltext';
 import { BaseScene, item } from '../core/BaseScene';
 import { speech } from '../core/widgets';
-import { DialogBox, Hotbar, panel, txt, bigText, floatText, itemName, ITEM_NAMES, tag as uiTag, PAL, INK, MUTED, W, H } from '../core/ui';
+import { DialogBox, Hotbar, panel, rrect, TYPE, EN, txt, bigText, floatText, itemName, ITEM_NAMES, tag as uiTag, PAL, INK, MUTED, W, H } from '../core/ui';
 import { bridgeSignTex } from '../art/props';
 import { Lives } from '../core/widgets';
 import { sfx } from '../core/audio';
@@ -13,7 +14,7 @@ import { CAST, OUTFITS } from '../art/cast';
 import type { CharDef, Outfit } from '../art/characters';
 
 function tag(scene: Phaser.Scene, x: number, y: number, s: string) {
-  return uiTag(scene, x, y, s, { bg: 0xe8303a, pop: true });
+  return uiTag(scene, x, y, s, { bg: PAL.acc, bold: true, pop: true });
 }
 
 // ---------------- #13 PC방 ----------------
@@ -60,8 +61,8 @@ export class PcBang extends BaseScene {
     this.time.addEvent({ delay: 180, loop: true, callback: () => sfx.typing() });
 
     await this.reveal();
-    const box = DialogBox.mission(this, 'PC방에서 게임하며 야식 주문하기', 'Order snacks while gaming at a PC bang!');
-    tag(this, 330, 84, 'BONUS MISSION  보너스 미션');
+    const box = DialogBox.mission(this, 'PC방에서 게임하며 야식 주문하기', 'Order snacks while gaming at a PC bang');
+    tag(this, 330, 84, 'BONUS MISSION  ·  보너스 미션');
     await this.wait(800);
     const bar = new Hotbar(this, ['tteokbokki', 'cupramen', 'bananamilk', 'corndog', 'soda', 'chicken'].map((id) => item(this, id)), 0);
     // 친구마다 원하는 야식이 다르다 (순서는 매번 섞임, 녹화 모드는 고정)
@@ -77,12 +78,12 @@ export class PcBang extends BaseScene {
       const n = ITEM_NAMES[r.id];
       if (r.who < 0) {
         this.lead = crew[1];
-        bubble = speech(this, 320, 150, '마무리는 다 같이 치킨!', 'Let\'s share fried chicken!', { icon: item(this, r.id) });
+        bubble = speech(this, 320, 150, '마무리는 다 같이 치킨!', 'Let\'s finish with fried chicken!', { icon: item(this, r.id) });
       } else {
         const s = crew[r.who];
         this.lead = s;
         this.emote(s, '!');
-        bubble = speech(this, s.x, 150, `${n[0]} 주세요!`, `${n[1]}, please!`, { icon: item(this, r.id) });
+        bubble = speech(this, s.x, 150, `${n[0]} 시켜 줘!`, `Get me ${n[1].toLowerCase()}, please!`, { icon: item(this, r.id) });
       }
     };
     ask();
@@ -113,8 +114,8 @@ export class PcBang extends BaseScene {
     await this.wait(1200);
     box.destroy();
     await this.tip(
-      'PC방에서는 자리에서 라면·핫도그·음료를 주문해 먹을 수 있어요. 맛집 수준!',
-      'At a PC bang you can order ramyeon, corn dogs and drinks right from your seat — and they\'re delicious!',
+      '한국 PC방에서는 자리에서 라면, 핫도그, 음료를 주문해 먹을 수 있어요. 맛도 꽤 좋아요.',
+      'At a Korean PC bang, you can order ramyeon, corn dogs and drinks right from your seat. They taste great, too.',
     );
     await this.completeMission('pcbang');
   }
@@ -201,11 +202,10 @@ export class Hangang extends BaseScene {
       g.fillStyle(0x2a2e40); g.fillRect(-200, 24, 480, 2);
       pillars.add(g);
       pillars.add(this.add.image(x + 21, 124, bridgeSignTex(this)).setScale(2));
-      pillars.add(txt(this, x + 21, 119.5, '잠수교', { px: 8.5, weight: 800, color: '#ffffff' }).setOrigin(0.5));
-      pillars.add(txt(this, x + 21, 130.5, 'Jamsugyo', { px: 6.5, weight: 700, color: '#d8e6ff', spacing: 0.3 }).setOrigin(0.5));
+      pillars.add(pixText(this, x + 21, 125, [{ t: '잠수교', font: 'g11b', color: '#ffffff' }, { t: 'JAMSUGYO', font: 'g7', color: '#bcd6ff' }], { gap: 2, shadow: '#123a7a' }));
     };
     mkPillar(520); mkPillar(1500);
-    uiTag(this, 320, 22, '한강 러닝  HANGANG RIVER RUN', { bg: PAL.sky, depth: 960 });
+    uiTag(this, 320, 22, 'HANGANG RUN  ·  한강 러닝', { depth: 960 });
 
     const def = { ...CAST.hana, outfit: this.gear };
     this.hero = this.char('hana', 150, this.ground, { scale: 2, def, key: 'run_hero' });
@@ -215,8 +215,8 @@ export class Hangang extends BaseScene {
     ambientFor(this, 'hangang');
     this.addHud();
     await this.reveal();
-    const box = DialogBox.mission(this, '러닝풀템 장착하고\n시원하게 한강 달려보기', 'Gear up and go for a run\nalong the Hangang river!');
-    if (!director.auto) uiTag(this, 320, 352, 'SPACE · ↑ · TAP  =  점프 JUMP   ·   콘을 피하세요! Dodge the cones!', { bg: PAL.ink, oy: 1, pop: true });
+    const box = DialogBox.mission(this, '러닝 장비 갖추고 한강 달리기', 'Gear up and run along the Hangang');
+    if (!director.auto) uiTag(this, 320, 352, 'SPACE · ↑ · TAP  ·  점프해서 콘을 피해요  Jump over the cones', { bg: PAL.ink, oy: 1, pop: true });
     this.lives = new Lives(this);
 
     // 아이템 배치 (x는 출발 후 거리)
@@ -302,7 +302,7 @@ export class Hangang extends BaseScene {
           this.mistakes++;
           this.lives?.lose();
           this.emote(this.hero, '💧');
-          floatText(this, this.hero.x, this.hero.y - 120, '아야! Ouch!', '#ff8a8a', 12);
+          floatText(this, this.hero.x, this.hero.y - 120, '아야!  Ouch!', '#ff8a8a', 12);
           this.tweens.add({ targets: this.hero, alpha: 0.3, yoyo: true, repeat: 3, duration: 90 });
         }
       }
@@ -340,8 +340,8 @@ export class Hangang extends BaseScene {
     await this.wait(900);
     box.destroy();
     await this.tip(
-      '한강공원에서는 러닝·자전거·치킨 피크닉을 즐겨요. 편의점 즉석 라면도 필수 코스!',
-      'At Hangang Park people run, cycle and picnic with fried chicken — riverside instant ramyeon is a must!',
+      '한강공원에서는 달리기, 자전거, 치킨 피크닉을 즐겨요. 편의점 즉석 라면도 꼭 먹어 봐요.',
+      'At Hangang Park, people run, cycle and picnic with fried chicken. Try the instant ramyeon, too.',
     );
     // 남은 XP 보정 (점프 실패로 놓친 경우에도 스테이지 합계가 맞도록)
     await this.completeMission('hangang');
@@ -363,36 +363,37 @@ export class Cvs extends BaseScene {
     this.lead = hana;
     pigeons(this, [[300, 334], [560, 340], [600, 330]]);
     await this.reveal();
-    const box = DialogBox.mission(this, '편의점에서 황금 조합 만들기', 'Create the ultimate combo\nat a convenience store!');
+    const box = DialogBox.mission(this, '편의점 꿀조합 만들기', 'Make a convenience-store combo');
     await this.wait(600);
     const bar = new Hotbar(this, ['bananamilk', 'cupramen2', 'samgak', 'cheese', 'icecream', 'sausage', 'cookies', 'tteokbokki'].map((id) => item(this, id)), 0);
 
     const recipes: { a: string; b: string; ko: string; en: string; who: Phaser.GameObjects.Sprite; pos: [number, number] }[] = [
-      { a: 'cupramen2', b: 'cheese', ko: '치즈 라면', en: 'Cheese Ramyeon', who: hana, pos: [312, 150] },
-      { a: 'cookies', b: 'icecream', ko: '쿠키 아이스크림', en: 'Cookie Ice Cream', who: kofi, pos: [470, 150] },
+      { a: 'cupramen2', b: 'cheese', ko: '치즈 라면', en: 'Cheese ramyeon', who: hana, pos: [312, 150] },
+      { a: 'cookies', b: 'icecream', ko: '쿠키 아이스크림', en: 'Cookie ice cream', who: kofi, pos: [470, 150] },
     ];
     for (const r of recipes) {
       // SHOP 팝업
       const win = this.add.container(r.pos[0], r.pos[1]).setDepth(930);
       const g = this.add.graphics();
       panel(g, -74, -52, 148, 98);
-      g.fillStyle(PAL.mint); g.fillRect(-72, -50, 2, 22);
-      g.fillStyle(PAL.line); g.fillRect(-70, -26, 140, 1);
+      g.fillStyle(PAL.acc); g.fillRoundedRect(-70, -46, 2, 18, 1);
+      g.fillStyle(PAL.line); g.fillRect(-68, -24.5, 136, 0.75);
       for (const sx of [-52, 14]) {
-        g.fillStyle(PAL.edge); g.fillRect(sx - 1, -23, 40, 36);
-        g.fillStyle(PAL.surf2); g.fillRect(sx, -22, 38, 34);
-        g.fillStyle(0xffffff, 0.05); g.fillRect(sx, -22, 38, 1);
+        g.fillStyle(0x000000, 0.3); rrect(g, sx - 1, -21, 40, 36, 5);
+        g.fillStyle(PAL.surf2); rrect(g, sx - 0.5, -20.5, 39, 35, 4.5);
       }
-      const title = txt(this, -64, -48, r.en, { bold: true, color: '#ffffff' });
-      const titleEn = txt(this, -64, -36, `RECIPE  ·  ${r.ko}`, { size: 10, color: '#7ef0c4' });
+      const title = txt(this, -62, -48, r.ko, { px: TYPE.body + 0.5, weight: 800, color: '#ffffff' });
+      const titleEn = txt(this, -62, -35, `RECIPE  ·  ${r.en}`, { px: TYPE.cap, weight: 700, color: EN, spacing: 0.5 });
       const plus = txt(this, 0, -5, '+', { bold: true, color: '#ffffff' }).setOrigin(0.5);
       const qs = [-33, 33].map((x) => txt(this, x, -5, '?', { px: 18, weight: 900, color: '#5c6690' }).setOrigin(0.5));
       const btn = this.add.graphics();
-      panel(btn, -42, 20, 84, 18, PAL.mint, 0xa8f4d6, PAL.edge, false, 1);
-      const bt = txt(this, 0, 29, 'CREATE  만들기', { size: 10, color: '#0b0f24' }).setOrigin(0.5);
+      btn.fillStyle(0x000000, 0.25); rrect(btn, -42, 21.5, 84, 19, 6);
+      btn.fillStyle(PAL.accDk); rrect(btn, -42, 20.5, 84, 19, 6);
+      btn.fillStyle(PAL.acc); rrect(btn, -42, 19, 84, 19, 6);
+      const bt = txt(this, 0, 28.5, 'CREATE  만들기', { px: TYPE.small, weight: 800, color: '#ffffff', spacing: 1 }).setOrigin(0.5);
       win.add([g, title, titleEn, plus, btn, bt, ...qs]);
       this.lead = r.who;
-      this.say(r.who, `${r.ko} 만들어 줘!`, `Make me a ${r.en}!`, 2000);
+      this.say(r.who, `${r.ko} 만들어 줘!`, `Make me some ${r.en.toLowerCase()}!`, 2000);
       win.setScale(0);
       this.tweens.add({ targets: win, scale: 1, duration: 300, ease: 'Back.Out' });
       const slotsX = [-33, 33];
@@ -416,7 +417,7 @@ export class Cvs extends BaseScene {
       sfx.sparkle();
       this.tweens.add({ targets: win, scale: 0, duration: 250, delay: 200, onComplete: () => win.destroy() });
       floatText(this, r.pos[0], r.pos[1] - 10, `${r.ko}!`, '#ffe066', 14);
-      const done = uiTag(this, r.pos[0], r.pos[1] + 40, '꿀조합 완성!  COMBO COMPLETE!', { bg: PAL.acc, bold: true, pop: true });
+      const done = uiTag(this, r.pos[0], r.pos[1] + 40, '꿀조합 완성!  Combo complete!', { bg: PAL.acc, bold: true, pop: true });
       this.tweens.add({ targets: done, alpha: 0, delay: 1500, duration: 300, onComplete: () => done.destroy() });
       this.play(r.who, 'eat');
       this.emote(r.who, '♥');
@@ -429,8 +430,8 @@ export class Cvs extends BaseScene {
     await this.wait(800);
     box.destroy();
     await this.tip(
-      '한국 편의점 꿀조합: 컵라면에 치즈, 아이스크림에 쿠키! 24시간 열고 먹고 갈 자리도 있어요.',
-      'Korean convenience-store hacks: cheese in cup ramyeon, cookies on ice cream! Open 24/7, with seats to eat in.',
+      '편의점 꿀조합은 컵라면에 치즈, 아이스크림에 쿠키예요. 24시간 열고, 먹고 갈 자리도 있어요.',
+      'Store combos: cheese in cup ramyeon and cookies on ice cream. Stores are open 24/7 with seats to eat in.',
     );
     await this.completeMission('cvs');
   }

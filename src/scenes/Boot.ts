@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { bakeCharacter } from '../art/characters';
-import { CAST, LINEUP } from '../art/cast';
+import { CAST, LINEUP, setHero } from '../art/cast';
 import { makeFxTextures } from '../core/fx';
 import { ATLASES } from '../core/BaseScene';
 import { director } from '../core/director';
@@ -12,7 +12,7 @@ const BGS = ['sky', 'airport', 'title', 'map1', 'hanok_ext', 'hanok_int', 'jjimj
 
 // 녹화/디버그용 단축 경로: ?scene=<이름>
 const JUMP: Record<string, [string, object?]> = {
-  intro: ['Intro'], arrival: ['Arrival'], title: ['Title'], cast: ['CastRoll'], map: ['WorldMap'],
+  intro: ['Intro'], arrival: ['Arrival'], title: ['Title'], cast: ['CastRoll'], select: ['CharSelect'], map: ['WorldMap'],
   hanok: ['HanokShoes'], ondol: ['HanokOndol'], jjimjil: ['Jjimjil'],
   temple: ['DressCode', { variant: 'temple' }], palace: ['DressCode', { variant: 'palace' }], park: ['DressCode', { variant: 'park' }],
   levelup1: ['LevelUp'], pcbang: ['PcBang'], hangang: ['Hangang'], cvs: ['Cvs'], levelup2: ['LevelUp'],
@@ -49,6 +49,8 @@ export class Boot extends Phaser.Scene {
     LINEUP.forEach((id) => bakeCharacter(this, CAST[id]));
     this.scene.launch('fx');
     const q = new URLSearchParams(location.search);
+    // 테스트용: ?hero=leo 로 주인공 지정
+    if (q.get('hero')) { setHero(q.get('hero')!); state.hero = q.get('hero')!; }
     const go = () => {
       const jump = JUMP[director.start];
       if (jump) {
@@ -68,7 +70,7 @@ export class Boot extends Phaser.Scene {
       // 첫 입력으로 오디오 잠금 해제
       this.children.list.filter((o) => o instanceof Phaser.GameObjects.Text && o.text.startsWith('LOADING')).forEach((o) => o.destroy());
       const t = txt(this, W / 2, H / 2 + 24, 'CLICK  ·  TAP  ·  ANY KEY', { size: 10, color: '#ffffff', spacing: 2 }).setOrigin(0.5, 0);
-      const t2 = txt(this, W / 2, H / 2 + 38, '화면을 눌러 시작하세요', { size: 10, color: SUB }).setOrigin(0.5, 0);
+      const t2 = txt(this, W / 2, H / 2 + 38, '화면을 눌러 시작해요', { size: 10, color: SUB }).setOrigin(0.5, 0);
       this.tweens.add({ targets: [t, t2], alpha: 0.35, yoyo: true, repeat: -1, duration: 700 });
       const start = () => { audioCtx(); go(); };
       this.input.once('pointerdown', start);

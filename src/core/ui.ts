@@ -85,6 +85,24 @@ export function txt(scene: Phaser.Scene, x: number, y: number, s: string, opts: 
   return t;
 }
 
+// 균형 줄바꿈: 필요한 줄 수는 그대로 두고, 줄 길이가 최대한 고르게 되도록 줄바꿈 폭을 줄인다
+// (한 단어만 다음 줄로 떨어지는 '고아 단어'를 없앤다)
+export function balance(t: Phaser.GameObjects.Text, s: string, maxW: number) {
+  t.setWordWrapWidth(maxW, true);
+  const n = t.getWrappedText(s).length;
+  if (n > 1) {
+    let lo = maxW * 0.35, hi = maxW;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) / 2;
+      t.setWordWrapWidth(mid, true);
+      if (t.getWrappedText(s).length > n) lo = mid; else hi = mid;
+    }
+    t.setWordWrapWidth(Math.ceil(hi) + 1, true);
+  }
+  t.setText(s);
+  return t;
+}
+
 // pixelArt 모드는 모든 텍스처를 NEAREST로 거르므로, 글자 텍스처만 부드러운 LINEAR로 바꿔 획이 들쭉날쭉하지 않게 한다
 {
   const proto = Phaser.GameObjects.Text.prototype as unknown as { updateText: () => unknown };
@@ -361,8 +379,8 @@ export class DialogBox extends Phaser.GameObjects.Container {
 
   // 줄바꿈 결과를 미리 계산해 창 높이를 맞추고, 타자 효과 중에도 줄 위치가 흔들리지 않게 고정
   fit(ko: string, en: string) {
-    this.ko.setText(ko || ' ');
-    this.en.setText(en);
+    balance(this.ko, ko || ' ', this.bw - 26);
+    balance(this.en, en, this.bw - 26);
     const kh = ko ? this.ko.height : 0;
     this.en.y = this.top + (ko ? kh + 2 : 0);
     const h = this.top + 8 + kh + (en ? this.en.height + (ko ? 2 : 0) : 0);
@@ -525,7 +543,7 @@ export class Hotbar extends Phaser.GameObjects.Container {
       this.add(im);
     });
     if (!director.auto) {
-      const help = tag(scene, W - 8, 21, '← →  Move  이동\nENTER  Select  선택', { ox: 1, depth: 0, clamp: false, fg: SUB });
+      const help = tag(scene, W - 8, 21, '← →  이동  Move\nENTER  선택  Select', { ox: 1, depth: 0, clamp: false, fg: SUB });
       if (this.x0 + items.length * this.slotW + help.width + 14 < W) this.add(help); else help.destroy();
     }
     this.setIndex(Math.min(startIndex, items.length - 1), false);
