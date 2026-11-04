@@ -53,9 +53,9 @@ export class Ending extends BaseScene {
     trophy.fillRect(-17, -12, 4, 8); trophy.fillRect(13, -12, 4, 8);
     trophy.fillStyle(0xfff3a0); trophy.fillRect(-9, -12, 3, 10);
     trophy.fillStyle(0xe8303a); trophy.fillRect(-2, -9, 4, 4);
-    const unlock = txt(this, SCR.x + SCR.w / 2, SCR.y + 56, '★ TITLE UNLOCKED ★', { size: 10, color: '#ffe066' }).setOrigin(0.5);
-    const hk = txt(this, SCR.x + SCR.w / 2, SCR.y + 80, '명예 한국인', { bold: true, color: '#ff4f7a', stroke: '#ffe066', strokeThickness: 1 }).setOrigin(0.5).setScale(2);
-    const hke = txt(this, SCR.x + SCR.w / 2, SCR.y + 102, 'HONORARY KOREAN', { size: 10, color: '#ffffff' }).setOrigin(0.5);
+    const unlock = txt(this, SCR.x + SCR.w / 2, SCR.y + 56, 'TITLE UNLOCKED  ·  칭호 획득', { size: 10, color: '#ffd166', spacing: 1 }).setOrigin(0.5);
+    const hk = txt(this, SCR.x + SCR.w / 2, SCR.y + 80, 'HONORARY KOREAN', { px: 19, weight: 900, color: '#ffffff', spacing: 1 }).setOrigin(0.5);
+    const hke = txt(this, SCR.x + SCR.w / 2, SCR.y + 102, '명예 한국인', { size: 10, color: '#aeb6d9' }).setOrigin(0.5);
     screen.add([tg, trophy, unlock, hk, hke]);
     [trophy, unlock, hk, hke].forEach((o, i) => { o.setAlpha(0); this.tweens.add({ targets: o, alpha: 1, delay: 300 + i * 250, duration: 300 }); });
     this.time.addEvent({ delay: 250, repeat: 12, callback: () => sparkles(this, SCR.x + Phaser.Math.Between(20, SCR.w - 20), SCR.y + Phaser.Math.Between(10, 60), 3, [0xffe066, 0xffffff], 12) });
@@ -87,7 +87,7 @@ export class Ending extends BaseScene {
       }
     } else {
       // 실사 영상이 아직 없으면: 여정 하이라이트 몽타주 (미션 배경 + 스탬프)
-      const reel: [string, string][] = [['hanok_int', '온돌'], ['jjimjil', '찜질방'], ['palace', '고궁 한복'], ['hangang', '한강 러닝'], ['hansik', '한식'], ['stage', 'K-POP']];
+      const reel: [string, string][] = [['hanok_int', '온돌 Ondol'], ['jjimjil', '찜질방 Jjimjilbang'], ['palace', '고궁 한복 Hanbok'], ['hangang', '한강 러닝 Hangang run'], ['hansik', '한식 K-food'], ['stage', 'K-POP 댄스 Dance']];
       for (const [ri, [bg, label]] of reel.entries()) {
         const fit = W / this.textures.get(bg).getSourceImage().width;
         const im = this.add.image(SCR.x + SCR.w / 2, SCR.y + SCR.h / 2, bg).setScale(0.42 * fit).setDepth(10);
@@ -155,12 +155,14 @@ export class Outro extends BaseScene {
     // 녹화 종료
     if (director.rec) await director.stopRecording();
     // 다시하기
-    const btn = button(this, W / 2, H - 40, '↺  PLAY AGAIN', { w: 128, h: 24 }).setDepth(120);
+    const btn = button(this, W / 2, H - 40, 'PLAY AGAIN', { w: 132, h: 34, sub: '다시 하기' }).setDepth(120);
     const again = () => { state.reset(); this.goto('Title', {}, 'crt'); };
     btn.on('pointerdown', again);
     this.input.keyboard?.once('keydown-ENTER', again);
     this.input.keyboard?.once('keydown-SPACE', again);
-    btn.setAlpha(0);
-    this.tweens.add({ targets: btn, alpha: 1, duration: 500 });
+    // 이번 여행에서 모은 별
+    const total = tag(this, W / 2, H - 82, `★ ${state.totalStars} / ${state.maxStars}   모은 별  STARS COLLECTED`, { fg: '#ffd166', bold: true, size: 11, depth: 120 });
+    btn.setAlpha(0); total.setAlpha(0);
+    this.tweens.add({ targets: [btn, total], alpha: 1, duration: 500 });
   }
 }

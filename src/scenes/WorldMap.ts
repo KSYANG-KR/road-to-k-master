@@ -4,7 +4,7 @@ import { BaseScene } from '../core/BaseScene';
 import { state, STAGES } from '../core/state';
 import { playMusic, sfx } from '../core/audio';
 import { director } from '../core/director';
-import { stageBanner, tag, COL, PAL, INK, W } from '../core/ui';
+import { stageBanner, tag, txt, panel, COL, PAL, ACC, SUB, W } from '../core/ui';
 import { sparkles } from '../core/fx';
 
 type Pt = [number, number];
@@ -77,32 +77,31 @@ export class WorldMap extends BaseScene {
       const [nx, ny] = n.at;
       const g = this.add.graphics({ x: nx, y: ny }).setDepth(2);
       // 바닥 그림자 + 동그란 스테이지 핀
-      g.fillStyle(0x000000, 0.25); g.fillEllipse(1, 3, 18, 8);
-      g.fillStyle(PAL.ink); g.fillCircle(0, 0, 7);
-      g.fillStyle(done ? 0x6fdc5a : isNext ? PAL.pink : 0xe8e0d0); g.fillCircle(0, 0, 6);
-      g.fillStyle(done ? 0x3fa83a : isNext ? PAL.pinkDk : 0xbcb2a0); g.fillRect(-5, 1, 10, 3);
-      g.fillStyle(0xffffff, 0.8); g.fillRect(-3, -4, 3, 2);
-      if (done) { g.fillStyle(0xffffff); g.fillRect(-3, 0, 2, 2); g.fillRect(-1, 2, 2, 2); g.fillRect(1, 0, 2, 2); g.fillRect(3, -2, 2, 2); }
+      g.fillStyle(0x000000, 0.3); g.fillEllipse(1, 3, 18, 8);
+      g.fillStyle(PAL.edge); g.fillCircle(0, 0, 7);
+      g.fillStyle(done ? PAL.mint : isNext ? PAL.acc : 0x8a90b0); g.fillCircle(0, 0, 6);
+      g.fillStyle(0xffffff, 0.5); g.fillRect(-3, -4, 3, 1);
+      if (done) { g.fillStyle(PAL.edge); g.fillRect(-3, 0, 2, 2); g.fillRect(-1, 2, 2, 2); g.fillRect(1, 0, 2, 2); g.fillRect(3, -2, 2, 2); }
       if (isNext) {
         // 다음 목적지: 퍼지는 링 + 통통 튀는 화살표
         const ring = this.add.circle(nx, ny, 7).setStrokeStyle(2, 0xffffff).setDepth(2);
         this.tweens.add({ targets: ring, scale: 2.4, alpha: 0, repeat: -1, duration: 900, ease: 'Quad.Out' });
         const arrow = this.add.graphics({ x: nx, y: ny - 14 }).setDepth(4);
-        arrow.fillStyle(PAL.ink); arrow.fillTriangle(-6, -6, 6, -6, 0, 2);
-        arrow.fillStyle(PAL.gold); arrow.fillTriangle(-4, -5, 4, -5, 0, 0);
+        arrow.fillStyle(PAL.edge); arrow.fillTriangle(-6, -6, 6, -6, 0, 2);
+        arrow.fillStyle(0xffffff); arrow.fillTriangle(-4, -5, 4, -5, 0, 0);
         this.tweens.add({ targets: arrow, y: ny - 19, yoyo: true, repeat: -1, duration: 320, ease: 'Sine.InOut' });
       }
       // 장소 태그
-      const t = tag(this, n.tag[0], n.tag[1], `${state.stage + 1}-${i + 1}  ${m.label}`, { bg: done ? 0xbff0a8 : isNext ? 0xffe27a : 0xfff8ec, fg: INK, bold: true, size: 12, depth: 3 });
-      if (done) tag(this, n.tag[0] + t.width / 2 - 2, n.tag[1] - t.height / 2 - 1, 'CLEAR', { bg: 0x3fa83a, size: 10, depth: 4 }).setAngle(8);
-      if (isNext) this.tweens.add({ targets: t, scale: 1.08, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.InOut' });
+      const t = this.placeCard(n.tag[0], n.tag[1], `${state.stage + 1}-${i + 1}`, m.label, m.en, done ? 'done' : isNext ? 'next' : 'lock');
       const hit = this.add.zone(nx, ny, 40, 40).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', () => { if (isNext && !director.auto) this.enter(i); });
-      t.setInteractive({ useHandCursor: true }).on('pointerdown', () => { if (isNext && !director.auto) this.enter(i); });
+      t.on('pointerdown', () => { if (isNext && !director.auto) this.enter(i); });
     });
 
-    // 엘리베이터 (스테이지3)
+    // 엘리베이터 (스테이지3) + 건물 간판
     if (map.elevator) {
+      txt(this, 312, 15.5, 'K-STYLE MALL', { px: 10, weight: 900, color: '#2a2f6a', spacing: 1.5 }).setOrigin(0.5).setDepth(2);
+      txt(this, 312, 26, '케이 스타일 몰', { px: 6.5, weight: 700, color: '#c94466', spacing: 1 }).setOrigin(0.5).setDepth(2);
       this.elevatorCar = this.add.graphics().setDepth(5);
       this.drawElevator(this.floorY(Math.max(0, this.currentFloor() - 1)));
     }
@@ -122,13 +121,40 @@ export class WorldMap extends BaseScene {
       await director.waitInput(this, 2200);
       this.tweens.add({ targets: banner, alpha: 0, scale: 0.8, duration: 250, onComplete: () => banner.destroy() });
     }
-    if (!director.auto && next) tag(this, W / 2, 350, '▼ 표시된 장소를 클릭하거나 ENTER', { bg: PAL.ink, fg: '#ffffff', oy: 1, depth: 20, pop: true });
+    if (!director.auto && next) tag(this, W / 2, 350, 'Click the glowing spot or press ENTER  ·  빛나는 장소를 클릭하거나 ENTER', { bg: PAL.ink, fg: '#ffffff', oy: 1, depth: 20, pop: true });
     const idx = next ? stage.indexOf(next) : -1;
     if (idx < 0) return;
     const go = () => this.enter(idx);
     this.input.keyboard?.once('keydown-ENTER', go);
     this.input.keyboard?.once('keydown-SPACE', go);
     if (director.auto) { await this.wait(500); go(); }
+  }
+
+  // 장소 카드: 번호 칩 + 한글 이름 + 영문 이름
+  placeCard(x: number, y: number, num: string, ko: string, en: string, st: 'done' | 'next' | 'lock') {
+    const c = this.add.container(0, 0).setDepth(3);
+    const t1 = txt(this, 0, 0, ko, { bold: true, color: st === 'lock' ? '#d6daf0' : '#ffffff' });
+    const t2 = txt(this, 0, 0, en, { size: 10, color: st === 'next' ? ACC : st === 'done' ? '#7ef0c4' : SUB });
+    const chipW = 22;
+    const w = Math.ceil(Math.max(t1.width, t2.width)) + chipW + 16, h = 32;
+    const left = Phaser.Math.Clamp(Math.round(x - w / 2), 4, W - 4 - w), top = Math.round(y - h / 2);
+    const g = this.add.graphics();
+    panel(g, left, top, w, h);
+    const chipC = st === 'done' ? PAL.mint : st === 'next' ? PAL.acc : PAL.line;
+    g.fillStyle(chipC); g.fillRect(left + 4, top + 4, chipW, h - 8);
+    const nt = txt(this, left + 4 + chipW / 2, top + h / 2, num, { size: 10, color: st === 'lock' ? '#d6daf0' : '#0b0f24' }).setOrigin(0.5);
+    t1.setPosition(left + chipW + 10, top + 4);
+    t2.setPosition(left + chipW + 10, top + 18);
+    c.add([g, nt, t1, t2]);
+    c.setSize(w, h);
+    if (st === 'next') {
+      const glow = this.add.graphics();
+      glow.lineStyle(1, PAL.acc, 1); glow.strokeRect(left - 1, top - 1, w + 2, h + 2);
+      c.addAt(glow, 0);
+      this.tweens.add({ targets: glow, alpha: 0.2, yoyo: true, repeat: -1, duration: 600 });
+    }
+    c.setInteractive(new Phaser.Geom.Rectangle(left, top, w, h), Phaser.Geom.Rectangle.Contains);
+    return c;
   }
 
   elevatorCar?: Phaser.GameObjects.Graphics;

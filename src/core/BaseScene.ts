@@ -8,6 +8,10 @@ import { FxScene, shake, type Wipe } from './fx';
 import { XpHud, missionClear, xpPop, floatText, setupCamera, txt, W, H, type Hotbar, type ItemRef } from './ui';
 import { sfx } from './audio';
 import { ambientFor } from './ambient';
+import { speech, tipCard, timingGame, Lives, type Timing } from './widgets';
+
+// 오답일 때 랜덤으로 보여줄 한/영 반응
+const OOPS: [string, string][] = [['음… 그건 아닌 것 같아!', 'Hmm… not that one!'], ['다시 골라볼까?', 'Let\'s try another one.'], ['앗, 그게 아니야!', 'Oops, that\'s not it!']];
 
 export const ATLASES = ['items1', 'items2', 'items3', 'food', 'hansikfood', 'plane'];
 
@@ -24,11 +28,18 @@ export class BaseScene extends Phaser.Scene {
   shadows: { s: Phaser.GameObjects.Sprite; e: Phaser.GameObjects.Ellipse }[] = [];
   // 오답일 때 '?' 말풍선을 띄울 주인공
   lead?: Phaser.GameObjects.Sprite;
+  // 이번 미션에서 틀린 횟수 (별점 계산)
+  mistakes = 0;
+  lives?: Lives;
+  bubble?: Phaser.GameObjects.Container;
 
   init() {
     setupCamera(this);
     this.shadows = [];
     this.lead = undefined;
+    this.mistakes = 0;
+    this.lives = undefined;
+    this.bubble = undefined;
     this.events.off('update', this.syncShadows, this);
     this.events.on('update', this.syncShadows, this);
     this.alive = true;
@@ -121,9 +132,13 @@ export class BaseScene extends Phaser.Scene {
       const g = this.add.graphics();
       g.fillStyle(0x1a1430); g.fillRoundedRect(-8, -9, 16, 15, 4); g.fillTriangle(-4, 5, 2, 5, -6, 10);
       g.fillStyle(0xffffff); g.fillRoundedRect(-7, -8, 14, 13, 3); g.fillTriangle(-3, 4, 1, 4, -5, 8);
-      const t = kind === '💧'
-        ? this.add.text(0, -2, '💧', { fontSize: '9px' }).setOrigin(0.5)
-        : txt(this, 0, -2, kind, { bold: true, color: colors[kind] }).setOrigin(0.5);
+      let t: Phaser.GameObjects.GameObject;
+      if (kind === '💧') {
+        const d = this.add.graphics();
+        d.fillStyle(0x3aa0ff); d.fillTriangle(0, -6, -3.2, 0, 3.2, 0); d.fillCircle(0, 0.5, 3.4);
+        d.fillStyle(0xffffff, 0.7); d.fillCircle(-1.2, 0, 1);
+        t = d;
+      } else t = txt(this, 0, -1.5, kind, { px: 10, weight: 900, color: colors[kind] }).setOrigin(0.5);
       c.add([g, t]);
       c.setScale(0);
       this.tweens.add({ targets: c, scale: 1, duration: 220, ease: 'Back.Out' });
@@ -166,9 +181,9 @@ export class BaseScene extends Phaser.Scene {
   }
 
   // 같은 스프라이트에 새 의상을 입힘
-  redress(s: Phaser.GameObjects.Sprite, def: CharDef, outfit: Outfit, anim = 'idle') {
+  redress(s: Phaser.GameObjects.Sprite, def: CharDef, outfit: Outfit, anim = 'idle', only?: string[]) {
     const key = `${s.texture.key.split('#')[0]}#${Math.random().toString(36).slice(2, 6)}`;
-    bakeCharacter(this, def, outfit, key);
+    bakeCharacter(this, def, outfit, key, only);
     s.setTexture(key, 'idle0');
     this.play(s, anim);
   }
@@ -229,7 +244,11 @@ export class BaseScene extends Phaser.Scene {
     // 놓친 XP가 있어도 스테이지 합계(1000)가 맞도록 보정
     const expect = STAGES[state.stage].filter((m) => state.cleared.has(m.key)).reduce((a, m) => a + m.xp, 0);
     if (state.xp < expect) { state.xp = expect; await this.hud?.animateTo(expect, 400); }
-    await missionClear(this);
+    const got = Math.max(1, 3 - this.mistakes);
+    state.stars[key] = Math.max(state.stars[key] ?? 0, got);
+    this.lives?.hide();
+    this.bubble?.destroy();
+    await missionClear(this, got);
     if (state.stageDone()) {
       await this.goto(state.stage === 2 ? 'Finale' : 'LevelUp', {}, 'flash');
     } else {
@@ -237,12 +256,36 @@ export class BaseScene extends Phaser.Scene {
     }
   }
 
+  // 캐릭터 머리 위 한/영 말풍선 (ms 후 사라짐, 0이면 유지)
+  say(s: Phaser.GameObjects.Sprite, ko: string, en = '', ms = 1800, icon?: ItemRef) {
+    const b = speech(this, s.x, s.y - s.displayHeight * 0.8, ko, en, { icon });
+    if (ms > 0) this.time.delayedCall(ms / director.speed, () => { if (b.active) this.tweens.add({ targets: b, alpha: 0, duration: 200, onComplete: () => b.destroy() }); });
+    return b;
+  }
+
+  // 미션 끝에 보여주는 문화 팁 카드
+  tip(ko: string, en: string) {
+    return tipCard(this, ko, en);
+  }
+
+  // 타이밍 미니게임 (MISS면 별 하나 감점)
+  async timing(ko: string, en: string): Promise<Timing> {
+    const r = await timingGame(this, ko, en);
+    if (r === 'miss') { this.mistakes++; this.lives?.lose(); }
+    return r;
+  }
+
   // 핫바에서 정답 아이템을 모두 고를 때까지 진행. 자동 모드에선 커서가 직접 움직여 고른다.
-  choose(bar: Hotbar, correct: string[], onCorrect: (id: string) => Promise<void>, ordered = false) {
+  //  - 하트 3개: 오답·시간 초과마다 하나씩 잃고 별점이 깎인다
+  //  - 아이템별 오답 반응(wrong)과 제한 시간(time, 초)을 줄 수 있다
+  choose(bar: Hotbar, correct: string[], onCorrect: (id: string) => Promise<void>, ordered = false, opts: { wrong?: Record<string, [string, string]>; time?: number } = {}) {
     const remaining = [...correct];
     let busy = false;
     let misses = 0;
     let hint: Phaser.GameObjects.Graphics | undefined;
+    if (!this.lives) this.lives = new Lives(this);
+    const limit = (opts.time ?? 15) * 1000;
+    let left = limit;
     const clearHint = () => { hint?.destroy(); hint = undefined; };
     // 두 번 틀리면 정답 칸 위에 화살표 힌트
     const showHint = () => {
@@ -254,6 +297,27 @@ export class BaseScene extends Phaser.Scene {
       hint.fillStyle(0xffd23f); hint.fillTriangle(-7, -11, 7, -11, 0, -1);
       this.tweens.add({ targets: hint, y: bar.y - 28, yoyo: true, repeat: -1, duration: 260, ease: 'Sine.InOut' });
     };
+    const react = (ko: string, en: string) => {
+      this.bubble?.destroy();
+      if (this.lead?.active) this.bubble = this.say(this.lead, ko, en, 1600);
+    };
+    const miss = () => {
+      this.mistakes++;
+      this.lives?.lose();
+      if (++misses >= 2) showHint();
+    };
+    // 제한 시간 게이지
+    const timer = this.time.addEvent({ delay: 50, loop: true, callback: () => {
+      if (busy || !bar.active || director.auto) { bar.setTimer(director.auto ? null : left / limit); return; }
+      left -= 50;
+      bar.setTimer(Math.max(0, left / limit));
+      if (left <= 0) {
+        sfx.wrong();
+        react('시간이 다 됐어요! 힌트를 볼까?', 'Time\'s up! Here\'s a hint.');
+        miss(); showHint();
+        left = limit;
+      }
+    } });
     return new Promise<void>((resolve) => {
       bar.onPick = async (id, slot) => {
         if (busy) return;
@@ -261,20 +325,24 @@ export class BaseScene extends Phaser.Scene {
         if (!ok) {
           sfx.wrong();
           shake(this, bar.slots[slot]);
-          floatText(this, bar.slots[slot].x, bar.y - 4, '✕', '#ff5f5f');
+          floatText(this, bar.slots[slot].x, bar.y - 4, '×', '#ff5f5f', 15);
+          const w = opts.wrong?.[id] ?? Phaser.Utils.Array.GetRandom(OOPS);
+          react(w[0], w[1]);
           if (this.lead) this.emote(this.lead, Math.random() < 0.5 ? '?' : '💧');
-          if (++misses >= 2) showHint();
+          miss();
           return;
         }
         misses = 0;
         clearHint();
+        this.bubble?.destroy();
         busy = true;
         bar.enabled = false;
         remaining.splice(remaining.indexOf(id), 1);
         await onCorrect(id);
+        left = limit;
         busy = false;
         bar.enabled = true;
-        if (!remaining.length) resolve();
+        if (!remaining.length) { timer.remove(); bar.setTimer(null); resolve(); }
       };
       if (director.auto) {
         (async () => {

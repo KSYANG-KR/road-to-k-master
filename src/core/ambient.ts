@@ -277,13 +277,13 @@ export function ambientFor(scene: Phaser.Scene, bg: string) {
     case 'map1':
       glints(scene, [[0, 0, 40, H], [600, 0, 40, H], [0, 330, W, 30], [250, 60, 30, 260]], 14);
       cloudShadows(scene, 3);
-      clouds(scene, 3, 10, 300, 5, 8, 0.85, 1.2);
+      clouds(scene, 3, 10, 300, 5, 2.5, 0.85, 1.2);
       birds(scene, 20, 200, 7000, 9);
       break;
     case 'map2':
       glints(scene, [[60, 20, 120, 120], [130, 140, 140, 120], [200, 250, 130, 110]], 14);
       cloudShadows(scene, 3);
-      clouds(scene, 2, 10, 300, 5, 8, 0.8, 1.2);
+      clouds(scene, 2, 10, 300, 5, 2.5, 0.8, 1.2);
       birds(scene, 20, 200, 7000, 9);
       break;
     case 'map3':

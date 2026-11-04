@@ -1200,10 +1200,11 @@ export function bakeCharacter(scene: Phaser.Scene, d: CharDef, outfit?: Outfit, 
   const names = only ?? Object.keys(POSES);
   const frames = names.map((name) => ({ name, pc: renderPose(d, name, outfit) }));
   registerFrames(scene, k, frames);
-  if (only) return k;
   const anim = (name: string, fr: string[], rate: number, repeat = -1) => {
     const ak = `${k}:${name}`;
     if (scene.anims.exists(ak)) scene.anims.remove(ak);
+    // 일부 프레임만 구웠다면 프레임이 다 있는 애니메이션만 등록
+    if (!fr.every((f) => names.includes(f))) return;
     scene.anims.create({ key: ak, frames: fr.map((f) => ({ key: k, frame: f })), frameRate: rate, repeat });
   };
   anim('idle', ['idle0', 'idle0', 'idle1', 'idle1', 'idle0', 'blink', 'idle0', 'idle1'], 4);

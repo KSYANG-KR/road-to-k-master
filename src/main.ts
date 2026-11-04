@@ -12,7 +12,7 @@ import { LevelUp, Finale } from './scenes/LevelUp';
 import { Ending, Outro } from './scenes/Ending';
 
 async function start() {
-  await Promise.all(['Galmuri11', 'Galmuri11B', 'Galmuri9', 'Galmuri14'].map((f) => document.fonts.load(`12px ${f}`, '한글AB')));
+  await Promise.all([500, 600, 700, 800, 900].map((w) => document.fonts.load(`${w} 12px Pretendard`, '한글AB')));
   const q = new URLSearchParams(location.search);
   const game = new Phaser.Game({
     type: Phaser.WEBGL,

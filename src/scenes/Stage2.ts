@@ -1,7 +1,10 @@
 // Stage 2 (Lv.2 K-PLAYER) 미션: PC방 → 한강 러닝 → 편의점 황금조합
 import Phaser from 'phaser';
 import { BaseScene, item } from '../core/BaseScene';
-import { DialogBox, Hotbar, panel, txt, bigText, floatText, tag as uiTag, PAL, INK, W, H } from '../core/ui';
+import { speech } from '../core/widgets';
+import { DialogBox, Hotbar, panel, txt, bigText, floatText, itemName, ITEM_NAMES, tag as uiTag, PAL, INK, MUTED, W, H } from '../core/ui';
+import { bridgeSignTex } from '../art/props';
+import { Lives } from '../core/widgets';
 import { sfx } from '../core/audio';
 import { director } from '../core/director';
 import { hearts, sparkles } from '../core/fx';
@@ -51,41 +54,68 @@ export class PcBang extends BaseScene {
       desk.fillStyle(0xff5fa2, 0.6); desk.fillRect(x - 32, 265 + DY, 56, 1);
       desk.fillStyle(0x2a2650); desk.fillRect(x + 32, 260 + DY, 8, 9);
     });
-    txt(this, 584, 112, 'GOOD\nGAME\nGOOD\nFOOD', { bold: true, size: 10, color: '#4a5aa8', lineSpacing: -1 }).setDepth(501);
     // 모니터 빛 깜빡임
     const glow = xs.map((x) => this.add.rectangle(x, 222, 90, 60, 0x6fd8ff, 0.08).setDepth(499).setBlendMode(Phaser.BlendModes.ADD));
     glow.forEach((gl, i) => this.tweens.add({ targets: gl, alpha: 0.2, yoyo: true, repeat: -1, duration: 200 + i * 70 }));
     this.time.addEvent({ delay: 180, loop: true, callback: () => sfx.typing() });
 
     await this.reveal();
-    const box = DialogBox.mission(this, 'PC방에서 게임하며 야식 즐기기', 'Game and snack at a PC bang!');
-    tag(this, 320, 120, 'BONUS MISSION');
+    const box = DialogBox.mission(this, 'PC방에서 게임하며 야식 주문하기', 'Order snacks while gaming at a PC bang!');
+    tag(this, 330, 84, 'BONUS MISSION  보너스 미션');
     await this.wait(800);
-    const bar = new Hotbar(this, ['backpack', 'backpack', 'cupramen', 'corndog', 'soda', 'chicken'].map((id) => item(this, id)), 2);
-    const target: Record<string, number> = { soda: 0, cupramen: 1, corndog: 2 };
-    await this.choose(bar, ['soda', 'cupramen', 'corndog', 'chicken'], async (id) => {
+    const bar = new Hotbar(this, ['tteokbokki', 'cupramen', 'bananamilk', 'corndog', 'soda', 'chicken'].map((id) => item(this, id)), 0);
+    // 친구마다 원하는 야식이 다르다 (순서는 매번 섞임, 녹화 모드는 고정)
+    const wants = ['soda', 'cupramen', 'corndog'];
+    const order = director.auto ? [1, 0, 2] : Phaser.Utils.Array.Shuffle([0, 1, 2]);
+    const reqs: { who: number | -1; id: string }[] = [...order.map((i) => ({ who: i, id: wants[i] })), { who: -1, id: 'chicken' }];
+    let step = 0;
+    let bubble: Phaser.GameObjects.Container | undefined;
+    const ask = () => {
+      bubble?.destroy();
+      const r = reqs[step];
+      if (!r) return;
+      const n = ITEM_NAMES[r.id];
+      if (r.who < 0) {
+        this.lead = crew[1];
+        bubble = speech(this, 320, 150, '마무리는 다 같이 치킨!', 'Let\'s share fried chicken!', { icon: item(this, r.id) });
+      } else {
+        const s = crew[r.who];
+        this.lead = s;
+        this.emote(s, '!');
+        bubble = speech(this, s.x, 150, `${n[0]} 주세요!`, `${n[1]}, please!`, { icon: item(this, r.id) });
+      }
+    };
+    ask();
+    await this.choose(bar, reqs.map((r) => r.id), async (id) => {
+      bubble?.destroy();
+      const ref = item(this, id);
       const from = bar.slotWorldPos(id);
-      const it = this.add.image(from.x, from.y, 'items2', id).setDepth(600).setScale(0.5);
-      if (id === 'chicken') {
+      const it = this.add.image(from.x, from.y, ref.tex, ref.frame).setDepth(600).setScale(0.5);
+      const r = reqs[step++];
+      if (r.who < 0) {
         await new Promise<void>((ok) => this.tweens.add({ targets: it, x: 560, y: 286, duration: 400, ease: 'Quad.Out', onComplete: () => ok() }));
         sfx.pop();
         crew.forEach((s) => { s.anims.stop(); s.setFrame('cheer0'); hearts(this, s.x, 120, 2); });
         await this.award(75, 560, 230);
-        return;
+      } else {
+        const s = crew[r.who];
+        await new Promise<void>((ok) => this.tweens.add({ targets: it, x: s.x + 18, y: 220, scale: 0.35, duration: 400, ease: 'Quad.Out', onComplete: () => ok() }));
+        sfx.pop();
+        this.play(s, 'eat');
+        this.emote(s, '♥');
+        this.tweens.add({ targets: it, x: s.x + 10, y: 204, yoyo: true, repeat: 3, duration: 330 });
+        sparkles(this, s.x, 150, 10);
+        await this.award(75, s.x, 120);
       }
-      const i = target[id];
-      const s = crew[i];
-      await new Promise<void>((ok) => this.tweens.add({ targets: it, x: s.x + 18, y: 220, scale: 0.35, duration: 400, ease: 'Quad.Out', onComplete: () => ok() }));
-      sfx.pop();
-      this.play(s, 'eat');
-      this.emote(s, '♥');
-      this.tweens.add({ targets: it, x: s.x + 10, y: 204, yoyo: true, repeat: 3, duration: 330 });
-      sparkles(this, s.x, 150, 10);
-      await this.award(75, s.x, 120);
-    });
+      ask();
+    }, true, { time: 10 });
     bar.hide();
-    await this.wait(1600);
+    await this.wait(1200);
     box.destroy();
+    await this.tip(
+      'PC방에서는 자리에서 라면·핫도그·음료를 주문해 먹을 수 있어요. 맛집 수준!',
+      'At a PC bang you can order ramyeon, corn dogs and drinks right from your seat — and they\'re delicious!',
+    );
     await this.completeMission('pcbang');
   }
 }
@@ -100,6 +130,8 @@ export class Hangang extends BaseScene {
   speed = 150;
   gear: Outfit = OUTFITS.run0;
   items: { o: Phaser.GameObjects.Image; id: string; xp: number }[] = [];
+  cones: Phaser.GameObjects.Image[] = [];
+  hurt = 0;
   done = false;
 
   makeTiles() {
@@ -127,7 +159,7 @@ export class Hangang extends BaseScene {
 
   async create() {
     // 씬 인스턴스는 재사용되므로 상태 초기화
-    this.done = false; this.jumping = false; this.vy = 0; this.items = []; this.gear = OUTFITS.run0;
+    this.done = false; this.jumping = false; this.vy = 0; this.items = []; this.cones = []; this.hurt = 0; this.gear = OUTFITS.run0;
     this.makeTiles();
     const far = this.add.image(0, -20, 'hangang').setOrigin(0).setDepth(-100);
     far.setScale(H / far.height);
@@ -163,11 +195,17 @@ export class Hangang extends BaseScene {
       g.fillStyle(0x4a4e60); g.fillRect(36, 0, 6, H);
       g.fillStyle(0x50546a); g.fillRect(-200, 0, 480, 26);
       g.fillStyle(0xf0f0f0); for (let k = -180; k < 260; k += 60) g.fillRect(k, 10, 26, 6);
+      // 콘크리트 이음매와 그림자
+      g.fillStyle(0x5a5e70); for (let y = 40; y < H; y += 46) g.fillRect(0, y, 42, 1);
+      g.fillStyle(0x000000, 0.18); g.fillRect(0, 26, 42, 6);
+      g.fillStyle(0x2a2e40); g.fillRect(-200, 24, 480, 2);
       pillars.add(g);
-      pillars.add(txt(this, x + 21, 120, '잠\n수\n교', { bold: true, size: 12, color: '#ffffff', align: 'center', lineSpacing: -2 }).setOrigin(0.5, 0));
+      pillars.add(this.add.image(x + 21, 124, bridgeSignTex(this)).setScale(2));
+      pillars.add(txt(this, x + 21, 119.5, '잠수교', { px: 8.5, weight: 800, color: '#ffffff' }).setOrigin(0.5));
+      pillars.add(txt(this, x + 21, 130.5, 'Jamsugyo', { px: 6.5, weight: 700, color: '#d8e6ff', spacing: 0.3 }).setOrigin(0.5));
     };
     mkPillar(520); mkPillar(1500);
-    uiTag(this, 320, 22, 'HANGANG RIVER RUNNING', { bg: PAL.sky, depth: 960 });
+    uiTag(this, 320, 22, '한강 러닝  HANGANG RIVER RUN', { bg: PAL.sky, depth: 960 });
 
     const def = { ...CAST.hana, outfit: this.gear };
     this.hero = this.char('hana', 150, this.ground, { scale: 2, def, key: 'run_hero' });
@@ -177,14 +215,27 @@ export class Hangang extends BaseScene {
     ambientFor(this, 'hangang');
     this.addHud();
     await this.reveal();
-    const box = DialogBox.mission(this, '러닝풀템 장착하고\n시원하게 한강 달려보기', 'Gear up and go for a run\nalong the Hangang river!', 10, 10, 200);
-    if (!director.auto) uiTag(this, 320, 352, 'SPACE · ↑ · TAP  =  JUMP', { bg: PAL.ink, oy: 1, pop: true });
+    const box = DialogBox.mission(this, '러닝풀템 장착하고\n시원하게 한강 달려보기', 'Gear up and go for a run\nalong the Hangang river!');
+    if (!director.auto) uiTag(this, 320, 352, 'SPACE · ↑ · TAP  =  점프 JUMP   ·   콘을 피하세요! Dodge the cones!', { bg: PAL.ink, oy: 1, pop: true });
+    this.lives = new Lives(this);
 
     // 아이템 배치 (x는 출발 후 거리)
     const plan: [string, number, number, number][] = [
       ['heart', 500, 0, 20], ['cap', 800, 1, 100], ['heart', 1050, 0, 20], ['runvest', 1350, 1, 100],
       ['heart', 1600, 1, 20], ['water', 1850, 0, 40], ['runjacket', 2150, 1, 100],
     ];
+    // 장애물: 트래픽 콘 (부딪히면 하트 -1)
+    if (!this.textures.exists('cone')) {
+      const g = this.make.graphics({}, false);
+      g.fillStyle(0x2a1a14); g.fillRect(0, 15, 14, 3); g.fillRect(4, 0, 6, 16); g.fillRect(2, 6, 10, 10);
+      g.fillStyle(0xff7a1a); g.fillRect(5, 1, 4, 15); g.fillRect(3, 7, 8, 9);
+      g.fillStyle(0xffffff); g.fillRect(4, 5, 6, 2); g.fillRect(3, 10, 8, 2);
+      g.fillStyle(0xffb070); g.fillRect(5, 1, 1, 14);
+      g.fillStyle(0x3a3a46); g.fillRect(1, 15, 12, 2);
+      g.generateTexture('cone', 14, 18);
+      g.destroy();
+    }
+    this.cones = [650, 1220, 1720, 2020].map((x) => this.add.image(x, this.ground + 1, 'cone').setOrigin(0.5, 1).setDepth(440).setScale(1.3));
     plan.forEach(([id, x, high, xp]) => {
       const o = this.add.image(x, high ? this.ground - 92 : this.ground - 44, 'items2', id).setDepth(450).setScale(0.5);
       this.tweens.add({ targets: o, y: o.y - 4, yoyo: true, repeat: -1, duration: 400 });
@@ -236,6 +287,25 @@ export class Hangang extends BaseScene {
         if (director.auto && !this.jumping && it.o.y < this.ground - 60 && it.o.x - this.hero.x < 95 && it.o.x - this.hero.x > 60) jump();
         if (Math.abs(it.o.x - this.hero.x) < 18 && Math.abs(it.o.y - (this.hero.y - 46)) < 40) this.collect(it);
       }
+      for (const c of this.cones) {
+        if (!c.active) continue;
+        c.x -= d;
+        const dx = c.x - this.hero.x;
+        if (director.auto && !this.jumping && dx > 34 && dx < 52) jump();
+        if (Math.abs(dx) < 11 && this.hero.y > this.ground - 20 && this.time.now > this.hurt) {
+          // 콘에 걸려 휘청
+          this.hurt = this.time.now + 900;
+          c.setActive(false);
+          this.tweens.add({ targets: c, angle: 80, x: c.x + 20, y: c.y + 2, duration: 300 });
+          sfx.wrong();
+          this.cameras.main.shake(120, 0.004);
+          this.mistakes++;
+          this.lives?.lose();
+          this.emote(this.hero, '💧');
+          floatText(this, this.hero.x, this.hero.y - 120, '아야! Ouch!', '#ff8a8a', 12);
+          this.tweens.add({ targets: this.hero, alpha: 0.3, yoyo: true, repeat: 3, duration: 90 });
+        }
+      }
       if (dist > 2500 && !this.done) this.finish(box);
     };
     this.events.on('update', onUpdate);
@@ -254,8 +324,8 @@ export class Hangang extends BaseScene {
     };
     if (equip[it.id]) {
       this.gear = { ...this.gear, ...equip[it.id], acc: [...(this.gear.acc ?? []), ...(equip[it.id].acc ?? [])] };
-      this.redress(this.hero, CAST.hana, this.gear, 'run');
-      floatText(this, this.hero.x, this.hero.y - 120, 'GEAR UP!', '#d9ff5a', 12);
+      this.redress(this.hero, CAST.hana, this.gear, 'run', ['run0', 'run1', 'run2', 'run3', 'cheer0', 'cheer1', 'idle0', 'idle1', 'blink', 'surprise']);
+      floatText(this, this.hero.x, this.hero.y - 120, `${ITEM_NAMES[it.id]?.[0] ?? ''} 장착!  ${ITEM_NAMES[it.id]?.[1] ?? ''} ON`, '#d9ff5a', 12);
       this.emote(this.hero, '★');
       sfx.sparkle();
     }
@@ -269,6 +339,10 @@ export class Hangang extends BaseScene {
     hearts(this, this.hero.x, this.hero.y - 100, 4);
     await this.wait(900);
     box.destroy();
+    await this.tip(
+      '한강공원에서는 러닝·자전거·치킨 피크닉을 즐겨요. 편의점 즉석 라면도 필수 코스!',
+      'At Hangang Park people run, cycle and picnic with fried chicken — riverside instant ramyeon is a must!',
+    );
     // 남은 XP 보정 (점프 실패로 놓친 경우에도 스테이지 합계가 맞도록)
     await this.completeMission('hangang');
   }
@@ -293,29 +367,32 @@ export class Cvs extends BaseScene {
     await this.wait(600);
     const bar = new Hotbar(this, ['bananamilk', 'cupramen2', 'samgak', 'cheese', 'icecream', 'sausage', 'cookies', 'tteokbokki'].map((id) => item(this, id)), 0);
 
-    const recipes: { a: string; b: string; name: string; who: Phaser.GameObjects.Sprite; pos: [number, number] }[] = [
-      { a: 'cupramen2', b: 'cheese', name: '치즈 라면!', who: hana, pos: [150, 120] },
-      { a: 'cookies', b: 'icecream', name: '쿠키 아이스크림!', who: kofi, pos: [470, 120] },
+    const recipes: { a: string; b: string; ko: string; en: string; who: Phaser.GameObjects.Sprite; pos: [number, number] }[] = [
+      { a: 'cupramen2', b: 'cheese', ko: '치즈 라면', en: 'Cheese Ramyeon', who: hana, pos: [312, 150] },
+      { a: 'cookies', b: 'icecream', ko: '쿠키 아이스크림', en: 'Cookie Ice Cream', who: kofi, pos: [470, 150] },
     ];
     for (const r of recipes) {
       // SHOP 팝업
       const win = this.add.container(r.pos[0], r.pos[1]).setDepth(930);
       const g = this.add.graphics();
-      panel(g, -62, -44, 124, 90);
-      g.fillStyle(0x3aa86a); g.fillRect(-60, -42, 120, 15);
-      g.fillStyle(0xffffff, 0.35); g.fillRect(-60, -42, 120, 2);
-      g.fillStyle(PAL.ink); g.fillRect(-60, -27, 120, 1);
+      panel(g, -74, -52, 148, 98);
+      g.fillStyle(PAL.mint); g.fillRect(-72, -50, 2, 22);
+      g.fillStyle(PAL.line); g.fillRect(-70, -26, 140, 1);
       for (const sx of [-52, 14]) {
-        g.fillStyle(PAL.ink); g.fillRect(sx - 1, -23, 40, 36);
-        g.fillStyle(0xffffff); g.fillRect(sx, -22, 38, 34);
-        g.fillStyle(PAL.cream2); g.fillRect(sx, 8, 38, 4);
+        g.fillStyle(PAL.edge); g.fillRect(sx - 1, -23, 40, 36);
+        g.fillStyle(PAL.surf2); g.fillRect(sx, -22, 38, 34);
+        g.fillStyle(0xffffff, 0.05); g.fillRect(sx, -22, 38, 1);
       }
-      const title = txt(this, 0, -35, 'SHOP', { bold: true, color: '#ffffff', stroke: '#1a5a3a', strokeThickness: 2 }).setOrigin(0.5);
-      const plus = txt(this, 0, -5, '+', { bold: true, color: INK }).setOrigin(0.5);
+      const title = txt(this, -64, -48, r.en, { bold: true, color: '#ffffff' });
+      const titleEn = txt(this, -64, -36, `RECIPE  ·  ${r.ko}`, { size: 10, color: '#7ef0c4' });
+      const plus = txt(this, 0, -5, '+', { bold: true, color: '#ffffff' }).setOrigin(0.5);
+      const qs = [-33, 33].map((x) => txt(this, x, -5, '?', { px: 18, weight: 900, color: '#5c6690' }).setOrigin(0.5));
       const btn = this.add.graphics();
-      panel(btn, -28, 18, 56, 18, 0x3aa86a, 0x7ed9a0, PAL.ink, false);
-      const bt = txt(this, 0, 27, 'CREATE', { size: 10, color: '#ffffff' }).setOrigin(0.5);
-      win.add([g, title, plus, btn, bt]);
+      panel(btn, -42, 20, 84, 18, PAL.mint, 0xa8f4d6, PAL.edge, false, 1);
+      const bt = txt(this, 0, 29, 'CREATE  만들기', { size: 10, color: '#0b0f24' }).setOrigin(0.5);
+      win.add([g, title, titleEn, plus, btn, bt, ...qs]);
+      this.lead = r.who;
+      this.say(r.who, `${r.ko} 만들어 줘!`, `Make me a ${r.en}!`, 2000);
       win.setScale(0);
       this.tweens.add({ targets: win, scale: 1, duration: 300, ease: 'Back.Out' });
       const slotsX = [-33, 33];
@@ -325,10 +402,11 @@ export class Cvs extends BaseScene {
         const tex = item(this, id);
         const it = this.add.image(from.x, from.y, tex.tex, tex.frame).setDepth(935).setScale(0.5);
         await new Promise<void>((ok) => this.tweens.add({ targets: it, x: r.pos[0] + slotsX[n], y: r.pos[1] - 5, duration: 350, ease: 'Quad.Out', onComplete: () => ok() }));
+        qs[n].setVisible(false);
         win.add(it.setPosition(slotsX[n], -5));
         n++;
         sfx.pop();
-      }, true);
+      }, false, { time: 12 });
       // CREATE!
       await this.wait(director.auto ? 500 : 200);
       this.tweens.add({ targets: [btn, bt], scale: 0.9, yoyo: true, duration: 80 });
@@ -337,8 +415,9 @@ export class Cvs extends BaseScene {
       sparkles(this, r.pos[0], r.pos[1], 24, undefined, 60);
       sfx.sparkle();
       this.tweens.add({ targets: win, scale: 0, duration: 250, delay: 200, onComplete: () => win.destroy() });
-      floatText(this, r.pos[0], r.pos[1] - 10, r.name, '#ffe066', 14);
-      tag(this, r.pos[0], r.pos[1] + 40, 'COMBO COMPLETE! +150 XP');
+      floatText(this, r.pos[0], r.pos[1] - 10, `${r.ko}!`, '#ffe066', 14);
+      const done = uiTag(this, r.pos[0], r.pos[1] + 40, '꿀조합 완성!  COMBO COMPLETE!', { bg: PAL.acc, bold: true, pop: true });
+      this.tweens.add({ targets: done, alpha: 0, delay: 1500, duration: 300, onComplete: () => done.destroy() });
       this.play(r.who, 'eat');
       this.emote(r.who, '♥');
       hearts(this, r.who.x, r.who.y - 100, 3);
@@ -349,6 +428,10 @@ export class Cvs extends BaseScene {
     bar.hide();
     await this.wait(800);
     box.destroy();
+    await this.tip(
+      '한국 편의점 꿀조합: 컵라면에 치즈, 아이스크림에 쿠키! 24시간 열고 먹고 갈 자리도 있어요.',
+      'Korean convenience-store hacks: cheese in cup ramyeon, cookies on ice cream! Open 24/7, with seats to eat in.',
+    );
     await this.completeMission('cvs');
   }
 }

@@ -1,24 +1,17 @@
 // #01~#05-1 오프닝: 비행기 착륙 → 입국장 환호 → 타이틀 → 캐릭터 소개
 import Phaser from 'phaser';
 import { BaseScene } from '../core/BaseScene';
-import { DialogBox, bigText, button, tag, txt, W, H, ZOOM } from '../core/ui';
+import { DialogBox, bigText, button, tag, txt, PAL, TYPE, W, H, ZOOM } from '../core/ui';
 import { playMusic, sfx } from '../core/audio';
 import { director } from '../core/director';
 import { sparkles } from '../core/fx';
 import { CAST, LINEUP } from '../art/cast';
 import { state } from '../core/state';
+import { suitcaseTex } from '../art/props';
 
 // 여행 가방 (코드 픽셀)
 export function suitcase(scene: Phaser.Scene, x: number, y: number, color: number) {
-  const g = scene.add.graphics({ x, y });
-  g.fillStyle(0x2a2a3a); g.fillRect(-1, -22, 2, 7); g.fillRect(-4, -23, 8, 2);
-  g.fillStyle(0x1a1a26); g.fillRect(-7, -16, 14, 17);
-  g.fillStyle(color); g.fillRect(-6, -15, 12, 15);
-  g.fillStyle(0xffffff, 0.25); g.fillRect(-6, -15, 12, 2);
-  g.fillStyle(0x000000, 0.2); g.fillRect(-2, -13, 1, 12); g.fillRect(2, -13, 1, 12);
-  g.fillStyle(0x1a1a26); g.fillRect(-6, 1, 2, 2); g.fillRect(4, 1, 2, 2);
-  g.setDepth(y + 1);
-  return g;
+  return scene.add.image(x, y + 2, suitcaseTex(scene, color)).setOrigin(0.5, 1).setDepth(y + 1);
 }
 
 export class Intro extends BaseScene {
@@ -49,11 +42,15 @@ export class Arrival extends BaseScene {
     // 창밖으로 착륙하는 비행기
     const plane = this.add.image(170, 96, 'plane', 'plane').setScale(0.11).setAngle(6).setDepth(-50);
     // 안내판 문구
-    txt(this, 320, 34, 'WELCOME TO KOREA!', { bold: true, size: 12, color: '#ffffff' }).setOrigin(0.5).setScale(2).setDepth(-40);
-    txt(this, 448, 54, 'IMMIGRATION', { size: 10, color: '#c9d2ff' }).setOrigin(1, 0.5).setDepth(-40);
-    const vtext = (x: number, s: string) => txt(this, x, 34, s.split('').join('\n'), { size: 10, color: '#4a5aa8', align: 'center', lineSpacing: -2 }).setOrigin(0.5, 0).setDepth(-40);
-    vtext(58, 'GOOD♡TRIP');
-    vtext(581, 'KOREA♡YOU');
+    txt(this, 320, 31, 'WELCOME TO KOREA', { px: 15, weight: 800, color: '#ffffff', spacing: 1 }).setOrigin(0.5).setDepth(-40);
+    txt(this, 320, 49, '대한민국에 오신 것을 환영합니다', { px: TYPE.small, weight: 600, color: '#b9c6ff', spacing: 0.5 }).setOrigin(0.5).setDepth(-40);
+    // 세로 배너: 한글은 세로쓰기, 영어는 아래 가로 한 줄
+    const banner = (x: number, ko: string, en: string) => {
+      txt(this, x, 40, ko.split('').join('\n'), { px: 11, weight: 800, color: '#2f3f86', align: 'center', lineSpacing: 1 }).setOrigin(0.5, 0).setDepth(-40);
+      txt(this, x, 140, en, { px: 5.5, weight: 700, color: '#5a68a8', spacing: 0.5 }).setOrigin(0.5).setDepth(-40);
+    };
+    banner(59, '어서오세요', 'WELCOME');
+    banner(580, '즐거운여행', 'ENJOY KOREA');
     this.reveal();
     await this.wait(300);
     this.tweens.add({ targets: plane, x: 330, y: 150, angle: 0, duration: 2200, ease: 'Sine.Out' });
@@ -67,7 +64,7 @@ export class Arrival extends BaseScene {
     const crew = LINEUP.map((id, i) => {
       const fromLeft = i < 4;
       const s = this.char(id, fromLeft ? -40 - i * 30 : W + 40 + (7 - i) * 30, 300, { scale: 2 });
-      const bag = suitcase(this, s.x, 300, cases[i]).setScale(2);
+      const bag = suitcase(this, s.x, 300, cases[i]);
       return { s, bag, x: xs[i], i };
     });
     await Promise.all(crew.map(async ({ s, bag, x, i }) => {
@@ -79,10 +76,10 @@ export class Arrival extends BaseScene {
     sfx.levelup();
     sparkles(this, 320, 160, 30, undefined, 200);
     await this.wait(700);
-    const d = new DialogBox(this, 170, 308, 300, 40);
-    await d.say('대한민국 곳곳의 미션을 수행해 명예 한국인이 되어보세요!', 'Take on quests across Korea, unlock your honorary Korean title!');
+    const d = new DialogBox(this, 130, 306, 380, 40);
+    await d.say('대한민국 곳곳의 미션을 수행해 명예 한국인이 되어보세요!', 'Take on missions across Korea and become an honorary Korean!');
     await director.waitInput(this, 1600);
-    await d.say('Ready to play?', '', 40);
+    await d.say('준비됐나요? 출발해요!', "Ready? Let's go!", 40);
     // 카메라가 무리 쪽으로 살짝 줌인 (#04)
     this.camZoom(1.15 * ZOOM, 1200, 'Sine.easeInOut');
     await director.waitInput(this, 1200);
@@ -96,26 +93,25 @@ export class Title extends BaseScene {
   async create() {
     playMusic('title');
     this.bg('title');
-    // 로고: 두께감 있는 픽셀 레터링 (아래로 겹겹이 쌓아 입체감)
+    // 로고 가독성을 위한 상단 그라데이션
+    const shadeTop = this.add.graphics().setDepth(5);
+    for (let y = 0; y < 180; y += 3) { shadeTop.fillStyle(0x0b0f24, 0.72 * (1 - y / 190)); shadeTop.fillRect(0, y, W, 3); }
+    // 로고: 자간 넓힌 소제목 + 흰 레터링 + 코랄 하드 섀도
     const logo = this.add.container(0, 0).setDepth(20);
-    const road = bigText(this, 320, 24, 'ROAD TO', 2, '#ffffff', '#3a1f7a');
-    const k = bigText(this, 320, 72, 'K-MASTER', 4, '#ff6fb5', '#3a1f7a');
-    logo.add([road, k]);
-    const heartL = txt(this, 320 - 74, 23, '♥', { color: '#ff5fa2', stroke: '#ffffff', strokeThickness: 2 }).setOrigin(0.5).setScale(2);
-    const heartR = txt(this, 320 + 74, 23, '♥', { color: '#ff5fa2', stroke: '#ffffff', strokeThickness: 2 }).setOrigin(0.5).setScale(2);
-    logo.add([heartL, heartR]);
-    logo.y = -120;
-    this.tweens.add({ targets: logo, y: 0, duration: 800, ease: 'Bounce.Out' });
-    this.tweens.add({ targets: [heartL, heartR], scale: 2.4, yoyo: true, repeat: -1, duration: 400 });
-    // 로고 주변 반짝임
-    this.time.addEvent({ delay: 420, loop: true, callback: () => sparkles(this, Phaser.Math.Between(180, 460), Phaser.Math.Between(50, 100), 2, [0xffffff, 0xffe066], 6) });
+    const road = txt(this, 320, 18, 'ROAD TO', { bold: true, color: '#ffffff', spacing: 6 }).setOrigin(0.5, 0);
+    const deco = this.add.graphics();
+    deco.fillStyle(PAL.acc); deco.fillRect(320 - 80, 24, 24, 1); deco.fillRect(320 + 56, 24, 24, 1);
+    const k = bigText(this, 320, 70, 'K-MASTER', 4, '#ffffff', '#151a33', '#c94466');
+    const sub = tag(this, 320, 118, 'Become an honorary Korean   ·   명예 한국인 되기', { depth: 0, fg: '#e6eaff' });
+    logo.add([road, deco, k, sub]);
+    logo.setAlpha(0).setY(-10);
+    this.tweens.add({ targets: logo, alpha: 1, y: 0, duration: 700, ease: 'Quad.Out' });
 
     // PLAY 버튼
-    const btn = button(this, 320, 136, '▶  PLAY', { w: 112, h: 26 }).setDepth(30);
-    this.tweens.add({ targets: btn, y: 133, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.InOut' });
+    const btn = button(this, 320, 156, 'PLAY', { w: 124, h: 38, sub: '게임 시작' }).setDepth(30);
     if (!director.auto) {
-      const press = txt(this, 320, 160, 'CLICK · TAP · ENTER', { size: 10, color: '#ffffff', stroke: '#2a2346', strokeThickness: 3 }).setOrigin(0.5).setDepth(30);
-      this.tweens.add({ targets: press, alpha: 0.35, yoyo: true, repeat: -1, duration: 600 });
+      const press = tag(this, 320, 192, 'ENTER  ·  CLICK  ·  TAP', { depth: 30, size: 9 });
+      this.tweens.add({ targets: press, alpha: 0.4, yoyo: true, repeat: -1, duration: 700 });
     }
 
     // 하단 캐릭터 라인업
@@ -145,7 +141,7 @@ export class Title extends BaseScene {
     this.input.keyboard?.once('keydown-SPACE', start);
     if (director.auto) {
       await this.wait(1600);
-      this.tweens.add({ targets: hand, x: 334, y: 134, duration: 800, ease: 'Sine.InOut' });
+      this.tweens.add({ targets: hand, x: 334, y: 152, duration: 800, ease: 'Sine.InOut' });
       await this.wait(1000);
       this.tweens.add({ targets: hand, scale: 0.85, yoyo: true, duration: 90 });
       await this.wait(200);
@@ -164,17 +160,17 @@ export class CastRoll extends BaseScene {
     const worldW = 120 + 7 * spacing + 200;
     // 위→아래 그라데이션 + 사선 줄무늬 + 무대 바닥
     const g = this.add.graphics().setDepth(-100);
-    const A = Phaser.Display.Color.ValueToColor(0x3b2a9a), B = Phaser.Display.Color.ValueToColor(0x1c1450);
+    const A = Phaser.Display.Color.ValueToColor(0x232a5e), B = Phaser.Display.Color.ValueToColor(0x0b0f24);
     for (let y = 0; y < H; y += 4) {
       const c = Phaser.Display.Color.Interpolate.ColorWithColor(A, B, H, y);
       g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b)); g.fillRect(0, y, worldW, 4);
     }
     g.fillStyle(0xffffff, 0.05);
     for (let x = -H; x < worldW; x += 28) g.fillPoints([{ x, y: 0 }, { x: x + 12, y: 0 }, { x: x + 12 + 250, y: 250 }, { x: x + 250, y: 250 }], true);
-    g.fillStyle(0x15103a); g.fillRect(0, 300, worldW, H - 300);
-    g.fillStyle(0x4a3ab0); g.fillRect(0, 300, worldW, 2);
+    g.fillStyle(0x080b1c); g.fillRect(0, 300, worldW, H - 300);
+    g.fillStyle(PAL.line); g.fillRect(0, 300, worldW, 1);
     const colors = [0xff6fa5, 0xffa040, 0x5aaeff, 0xb57bff, 0x3fd6bd, 0xff7a7a, 0x7ad04a, 0x7a8aa8];
-    const tags = ['CURIOUS', 'FOODIE', 'GAMER', 'DREAMER', 'LEADER', 'ARTIST', 'RUNNER', 'WORKER'];
+    const tags = [['CURIOUS', '호기심 왕'], ['FOODIE', '미식가'], ['GAMER', '게이머'], ['DREAMER', '몽상가'], ['LEADER', '리더'], ['ARTIST', '아티스트'], ['RUNNER', '러너'], ['WORKER', '직장인']];
     LINEUP.forEach((id, i) => {
       const x = 120 + i * spacing;
       // 스포트라이트
@@ -185,10 +181,11 @@ export class CastRoll extends BaseScene {
       const s = this.char(id, x, 300, { scale: 4 });
       this.play(s, i % 2 ? 'wave' : 'idle');
       this.time.delayedCall(600 + i * 700, () => { this.hop(s, 10); this.emote(s, (['♪', '♥', '!', '★'] as const)[i % 4]); });
-      tag(this, x - 34, 50, tags[i], { bg: colors[i], ox: 0, depth: 5 });
-      txt(this, x - 34, 64, CAST[id].name, { bold: true, color: '#ffffff', stroke: '#2a2346', strokeThickness: 2 }).setScale(2).setDepth(5);
+      // 역할(영/한) → 이름 순으로 가운데 정렬. 카메라가 가로로 흐르므로 화면 가장자리 고정(clamp)은 끈다
+      tag(this, x, 46, `${tags[i][0]}  ${tags[i][1]}`, { bg: colors[i], depth: 5, clamp: false, bold: true });
+      txt(this, x, 58, CAST[id].name, { px: 22, weight: 900, color: '#ffffff', spacing: 1 }).setOrigin(0.5, 0).setDepth(5);
       if (id === 'hana') {
-        const you = tag(this, x - 34, 98, '1P ▶ YOU', { bg: 0x2a2346, fg: '#7cf0ff', ox: 0, depth: 5 });
+        const you = tag(this, x, 96, '1P  ·  YOU  ·  나', { bg: PAL.surf, fg: '#7cf0ff', depth: 5, clamp: false, bold: true });
         this.tweens.add({ targets: you, alpha: 0.4, yoyo: true, repeat: -1, duration: 450 });
       }
     });
@@ -200,7 +197,8 @@ export class CastRoll extends BaseScene {
     this.camPan(hero, H / 2, 900);
     await this.wait(1000);
     sfx.select();
-    bigText(this, hero, 50, 'START!', 3, '#ffe066', '#7a2d00').setScrollFactor(1);
+    bigText(this, hero, 150, 'START!', 3, '#ffd166', '#151a33', '#8a5a10').setScrollFactor(1).setDepth(20);
+    tag(this, hero, 184, '여행을 시작해요!  Let the journey begin!', { depth: 20, clamp: false, pop: true });
     await this.wait(900);
     state.reset();
     await this.goto('WorldMap', {}, 'flash');

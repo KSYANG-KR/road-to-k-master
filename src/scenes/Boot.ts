@@ -1,18 +1,18 @@
 import Phaser from 'phaser';
 import { bakeCharacter } from '../art/characters';
-import { CAST, NPC } from '../art/cast';
+import { CAST, LINEUP } from '../art/cast';
 import { makeFxTextures } from '../core/fx';
 import { ATLASES } from '../core/BaseScene';
 import { director } from '../core/director';
 import { state } from '../core/state';
 import { audioCtx } from '../core/audio';
-import { txt, bigText, panel, tag, setupCamera, PAL, W, H } from '../core/ui';
+import { txt, bigText, setupCamera, PAL, SUB, W, H } from '../core/ui';
 
 const BGS = ['sky', 'airport', 'title', 'map1', 'hanok_ext', 'hanok_int', 'jjimjil', 'temple', 'palace', 'park', 'map2', 'pcbang2', 'hangang', 'cvs', 'map3', 'hansik', 'salon', 'stage', 'night', 'dusk'];
 
 // 녹화/디버그용 단축 경로: ?scene=<이름>
 const JUMP: Record<string, [string, object?]> = {
-  intro: ['Intro'], title: ['Title'], cast: ['CastRoll'], map: ['WorldMap'],
+  intro: ['Intro'], arrival: ['Arrival'], title: ['Title'], cast: ['CastRoll'], map: ['WorldMap'],
   hanok: ['HanokShoes'], ondol: ['HanokOndol'], jjimjil: ['Jjimjil'],
   temple: ['DressCode', { variant: 'temple' }], palace: ['DressCode', { variant: 'palace' }], park: ['DressCode', { variant: 'park' }],
   levelup1: ['LevelUp'], pcbang: ['PcBang'], hangang: ['Hangang'], cvs: ['Cvs'], levelup2: ['LevelUp'],
@@ -28,14 +28,16 @@ export class Boot extends Phaser.Scene {
 
   preload() {
     setupCamera(this);
-    bigText(this, W / 2, H / 2 - 50, 'ROAD TO', 1, '#ffffff', '#3a1f7a');
-    bigText(this, W / 2, H / 2 - 28, 'K-MASTER', 3, '#ff6fb5', '#ffffff');
-    const frame = this.add.graphics();
-    panel(frame, W / 2 - 104, H / 2 + 2, 208, 14, 0x1d1840, 0x3a3270);
-    const bar = this.add.rectangle(W / 2 - 100, H / 2 + 9, 0, 6, PAL.pink).setOrigin(0, 0.5);
-    const shine = this.add.rectangle(W / 2 - 100, H / 2 + 7, 0, 1, 0xffffff, 0.6).setOrigin(0, 0.5);
-    const pct = txt(this, W / 2, H / 2 + 22, 'LOADING 0%', { size: 10, color: '#c9c0ff' }).setOrigin(0.5, 0);
-    this.load.on('progress', (p: number) => { bar.width = 200 * p; shine.width = 200 * p; pct.setText(`LOADING ${Math.round(p * 100)}%`); });
+    this.cameras.main.setBackgroundColor('#0b0f24');
+    txt(this, W / 2, H / 2 - 62, 'ROAD TO', { bold: true, color: '#ffffff', spacing: 6 }).setOrigin(0.5, 0);
+    const lines = this.add.graphics();
+    lines.fillStyle(PAL.acc); lines.fillRect(W / 2 - 78, H / 2 - 56, 22, 1); lines.fillRect(W / 2 + 56, H / 2 - 56, 22, 1);
+    bigText(this, W / 2, H / 2 - 26, 'K-MASTER', 3, '#ffffff', '#151a33', '#c94466');
+    const track = this.add.rectangle(W / 2 - 80, H / 2 + 14, 160, 2, PAL.line).setOrigin(0, 0.5);
+    const bar = this.add.rectangle(W / 2 - 80, H / 2 + 14, 0, 2, PAL.acc).setOrigin(0, 0.5);
+    const pct = txt(this, W / 2, H / 2 + 24, 'LOADING  0%', { size: 10, color: SUB, spacing: 2 }).setOrigin(0.5, 0);
+    void track;
+    this.load.on('progress', (p: number) => { bar.width = 160 * p; pct.setText(`LOADING  ${Math.round(p * 100)}%`); });
     BGS.forEach((b) => this.load.image(b, `assets/bg/${b}.png`));
     ATLASES.forEach((a) => this.load.atlas(a, `assets/sprites/${a}.png`, `assets/sprites/${a}.json`));
     this.load.image('kto_logo', 'assets/brand/imagine_your_korea.png');
@@ -43,7 +45,8 @@ export class Boot extends Phaser.Scene {
 
   create() {
     makeFxTextures(this);
-    [...Object.values(CAST), ...Object.values(NPC)].forEach((d) => bakeCharacter(this, d));
+    // 오프닝에 바로 나오는 8인만 미리 굽고, NPC는 처음 등장할 때 굽는다
+    LINEUP.forEach((id) => bakeCharacter(this, CAST[id]));
     this.scene.launch('fx');
     const q = new URLSearchParams(location.search);
     const go = () => {
@@ -64,8 +67,9 @@ export class Boot extends Phaser.Scene {
     } else {
       // 첫 입력으로 오디오 잠금 해제
       this.children.list.filter((o) => o instanceof Phaser.GameObjects.Text && o.text.startsWith('LOADING')).forEach((o) => o.destroy());
-      const t = tag(this, W / 2, H / 2 + 34, '▶ CLICK · TAP · PRESS ANY KEY', { bg: PAL.pink });
-      this.tweens.add({ targets: t, alpha: 0.2, yoyo: true, repeat: -1, duration: 500 });
+      const t = txt(this, W / 2, H / 2 + 24, 'CLICK  ·  TAP  ·  ANY KEY', { size: 10, color: '#ffffff', spacing: 2 }).setOrigin(0.5, 0);
+      const t2 = txt(this, W / 2, H / 2 + 38, '화면을 눌러 시작하세요', { size: 10, color: SUB }).setOrigin(0.5, 0);
+      this.tweens.add({ targets: [t, t2], alpha: 0.35, yoyo: true, repeat: -1, duration: 700 });
       const start = () => { audioCtx(); go(); };
       this.input.once('pointerdown', start);
       this.input.keyboard?.once('keydown', start);

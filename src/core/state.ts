@@ -23,28 +23,29 @@ export interface MissionInfo {
   key: string;
   scene: string;
   label: string;
+  en: string;
   xp: number;
   data?: Record<string, unknown>;
 }
 
 export const STAGES: MissionInfo[][] = [
   [
-    { key: 'hanok', scene: 'HanokShoes', label: '한옥', xp: 350 },
-    { key: 'jjimjil', scene: 'Jjimjil', label: '찜질방', xp: 200 },
-    { key: 'temple', scene: 'DressCode', label: '절', xp: 150, data: { variant: 'temple' } },
-    { key: 'palace', scene: 'DressCode', label: '경복궁', xp: 150, data: { variant: 'palace' } },
-    { key: 'park', scene: 'DressCode', label: '놀이공원', xp: 150, data: { variant: 'park' } },
+    { key: 'hanok', scene: 'HanokShoes', label: '한옥', en: 'Hanok', xp: 350 },
+    { key: 'jjimjil', scene: 'Jjimjil', label: '찜질방', en: 'Jjimjilbang', xp: 200 },
+    { key: 'temple', scene: 'DressCode', label: '절', en: 'Temple', xp: 150, data: { variant: 'temple' } },
+    { key: 'palace', scene: 'DressCode', label: '경복궁', en: 'Palace', xp: 150, data: { variant: 'palace' } },
+    { key: 'park', scene: 'DressCode', label: '놀이공원', en: 'Theme park', xp: 150, data: { variant: 'park' } },
   ],
   [
-    { key: 'pcbang', scene: 'PcBang', label: 'PC방', xp: 300 },
-    { key: 'hangang', scene: 'Hangang', label: '한강러닝', xp: 400 },
-    { key: 'cvs', scene: 'Cvs', label: '편의점', xp: 300 },
+    { key: 'pcbang', scene: 'PcBang', label: 'PC방', en: 'PC bang', xp: 300 },
+    { key: 'hangang', scene: 'Hangang', label: '한강러닝', en: 'Hangang run', xp: 400 },
+    { key: 'cvs', scene: 'Cvs', label: '편의점', en: 'Conv. store', xp: 300 },
   ],
   [
-    { key: 'hansik', scene: 'Hansik', label: '한식당', xp: 250 },
-    { key: 'salon', scene: 'Salon', label: '미용실', xp: 250 },
-    { key: 'photo', scene: 'PhotoBooth', label: '포토부스', xp: 200 },
-    { key: 'dance', scene: 'Dance', label: '댄스학원', xp: 300 },
+    { key: 'hansik', scene: 'Hansik', label: '한식당', en: 'Restaurant', xp: 250 },
+    { key: 'salon', scene: 'Salon', label: '미용실', en: 'Hair salon', xp: 250 },
+    { key: 'photo', scene: 'PhotoBooth', label: '포토부스', en: 'Photo booth', xp: 200 },
+    { key: 'dance', scene: 'Dance', label: '댄스학원', en: 'Dance studio', xp: 300 },
   ],
 ];
 
@@ -53,6 +54,11 @@ class GameState {
   xp = 0; // 현재 레벨 안에서의 XP
   cleared = new Set<string>();
   maxed = false;
+  // 미션별 별점 (1~3)
+  stars: Record<string, number> = {};
+
+  get totalStars() { return Object.values(this.stars).reduce((a, b) => a + b, 0); }
+  get maxStars() { return STAGES.flat().length * 3; }
 
   get level(): LevelInfo {
     return LEVELS[this.stage];
@@ -72,7 +78,7 @@ class GameState {
   }
 
   reset() {
-    this.stage = 0; this.xp = 0; this.cleared.clear(); this.maxed = false;
+    this.stage = 0; this.xp = 0; this.cleared.clear(); this.maxed = false; this.stars = {};
   }
 
   // 디버그/녹화용: 특정 미션 직전 상태로 맞추기
