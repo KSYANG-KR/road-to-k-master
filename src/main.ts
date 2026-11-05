@@ -51,6 +51,8 @@ async function start() {
       const name = `${tagName}_${String(n++).padStart(3, '0')}_${keys}.jpg`;
       game.canvas.toBlob((bl) => bl && post(name, bl), 'image/jpeg', 0.8);
       if (keys.includes('Outro') && ++outro > 4) { clearInterval(timer); post(`${tagName}_done.txt`, 'done'); }
+      // 화면이 멈췄는지 진단용 (게임 루프 프레임·WebGL 컨텍스트 상태)
+      post(`${tagName}_status.txt`, `frame=${game.loop.frame} lost=${(game.renderer as any).contextLost} keys=${keys}`);
     }, every);
   }
   // 창 크기 변경·기기 회전 시 항상 다시 맞춤 (Phaser 자동 감지가 놓치는 경우 대비)

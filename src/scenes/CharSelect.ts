@@ -1,4 +1,4 @@
-// 캐릭터 선택: 8명 중 한 명을 골라 그 캐릭터로 여행한다
+// 캐릭터 선택: 9명 중 한 명을 골라 그 캐릭터로 여행한다 (5 + 4 카드)
 import Phaser from 'phaser';
 import { BaseScene } from '../core/BaseScene';
 import { bigText, button, panel, rrect, tag, txt, balance, PAL, TXT, SUB, ACC, EN, TYPE, W, H } from '../core/ui';
@@ -9,7 +9,7 @@ import { bakeCharacter } from '../art/characters';
 import { state } from '../core/state';
 import { sparkles } from '../core/fx';
 
-const COLS = 4, CW = 70, CH = 78, GAP = 8;
+const COLS = 5, CW = 60, CH = 74, GAP = 6;
 const GX = 296, GY = 74;
 
 export class CharSelect extends BaseScene {
@@ -43,9 +43,11 @@ export class CharSelect extends BaseScene {
     let roleTag: Phaser.GameObjects.Container | undefined;
     let preview: Phaser.GameObjects.Sprite | undefined;
 
-    // 오른쪽: 4×2 카드
+    // 오른쪽: 5+4 카드
     const cards = LINEUP.map((id, i) => {
-      const x = GX + (i % COLS) * (CW + GAP), y = GY + Math.floor(i / COLS) * (CH + GAP);
+      // 둘째 줄(4장)은 가운데 정렬
+      const row = Math.floor(i / COLS);
+      const x = GX + (i % COLS) * (CW + GAP) + (row ? (CW + GAP) / 2 : 0), y = GY + row * (CH + GAP);
       const c = this.add.container(x, y);
       const bg = this.add.graphics();
       panel(bg, 0, 0, CW, CH, PAL.surf, PAL.line, PAL.edge, true, 0.85, 6);
@@ -53,7 +55,7 @@ export class CharSelect extends BaseScene {
       if (!this.textures.exists(key)) bakeCharacter(this, CAST[id]);
       // 상반신만 잘라 카드에 (텍스처 좌표 기준 크롭)
       // 텍스처 y 12~84 (머리~허리)를 카드 y 6~60 에 보이게
-      const S = 0.75;
+      const S = 0.68;
       const bust = this.add.sprite(CW / 2, 6 - 12 * S, key, 'idle0').setOrigin(0.5, 0).setScale(S).setCrop(18, 12, 60, 72);
       const nm = txt(this, CW / 2, CH - 14, CAST[id].name, { px: TYPE.small, weight: 800, color: TXT, spacing: 1 }).setOrigin(0.5, 0);
       const sel = this.add.graphics();

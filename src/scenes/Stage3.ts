@@ -431,12 +431,13 @@ export class Dance extends BaseScene {
     tag(this, 320, 54, 'FINAL STAGE  ·  마지막 무대', { bg: PAL.acc, bold: true, depth: 50 });
     // 댄서 6명
     const dancers: [string, CharDef][] = [
+      // 콘티 #25 의상: 메이 빨강/흰 바지, 레오 검정/카키 카고, 엠마 청록/검정, 아마라 검정/흰 바지, 노아 베이지 재킷/연청
       ['mei', { ...CAST.mei, outfit: OUTFITS.dance(0xe8303a, 0xf4f4f4) }],
       ['leo', { ...CAST.leo, outfit: OUTFITS.dance(0x1e1e2a, 0x6a7a3a) }],
       ['hana', { ...CAST.hana, outfit: OUTFITS.hanaLv3 }],
-      ['kofi', { ...CAST.kofi, outfit: OUTFITS.dance(0x2a9aaa, 0x1e1e2a, ['cap']) }],
+      ['emma', { ...CAST.emma, outfit: OUTFITS.dance(0x1f9aa8, 0x1e1e2a) }],
       ['amara', { ...CAST.amara, outfit: OUTFITS.dance(0x1e1e2a, 0xf4f4f4) }],
-      ['emma', { ...CAST.emma, outfit: OUTFITS.dance(0xf2d4a0, 0x4a74c0) }],
+      ['noah', { ...CAST.noah, outfit: { top: 'jacket', topColor: 0xe2c896, topColor2: 0xffffff, bottom: 'jeans', bottomColor: 0x8ab0e0, shoes: 0xffffff } }],
     ];
     const crew = dancers.map(([id, d], i) => {
       const s = this.char(id, 90 + i * 92, 318, { scale: 2, def: d, key: `dn_${id}` });

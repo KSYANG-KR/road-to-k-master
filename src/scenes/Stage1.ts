@@ -189,7 +189,8 @@ export class Jjimjil extends BaseScene {
     // 가마 불빛 일렁임
     const glow = this.add.rectangle(0, 0, W, H, 0xff8a3a, 0.08).setOrigin(0).setDepth(1000).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({ targets: glow, alpha: 0.16, yoyo: true, repeat: -1, duration: 700 });
-    const ids = ['mei', 'hana', 'emma', 'amara'];
+    // 콘티 #09: 소피아·(주인공)·엠마·코피가 양머리 수건을 쓰고 나란히
+    const ids = ['sofia', 'hana', 'emma', 'kofi'];
     const xs = [190, 280, 370, 460];
     const crew = ids.map((id, i) => {
       const base = id === 'hana' ? CAST.hana : CAST[id];
@@ -251,23 +252,27 @@ export class Jjimjil extends BaseScene {
 }
 
 // ---------------- #10 드레스코드: 같은 앵글, 배경과 의상만 바뀜 ----------------
-const DRESS: Record<string, { bg: string; ko: string; en: string; item: string; outfits: Outfit[]; tip: [string, string] }> = {
+// crew: 콘티 컷에 나오는 친구들 (주인공 'hana' 자리는 고른 캐릭터)
+const DRESS: Record<string, { bg: string; ko: string; en: string; item: string; crew: string[]; outfits: Outfit[]; tip: [string, string] }> = {
   temple: {
+    crew: ['noah', 'leo', 'hana', 'emma'],
     bg: 'temple', ko: '절에 어울리는 옷 입기', en: 'Dress right for a temple', item: 'monkrobe',
     outfits: [OUTFITS.monk, OUTFITS.monk, OUTFITS.monk, OUTFITS.monk],
     tip: ['템플스테이에서는 수련복을 입고 명상과 예불을 체험해요. 경내에서는 조용히 다녀요.', 'On a temple stay, you wear practice robes and try meditation. Keep quiet on the grounds.'],
   },
   palace: {
+    crew: ['noah', 'sofia', 'hana', 'emma'],
     bg: 'palace', ko: '고궁에 어울리는 옷 입기', en: 'Dress right for a royal palace', item: 'hanbok',
     outfits: [
       OUTFITS.hanbokM(0xf4f4f4, 0x2a3a8a, 0x2a3a8a),
       OUTFITS.hanbokF(0xf6a6b8, 0x2b3a8c, 0xd83a5a),
-      OUTFITS.hanbokF(0xf2d45a, 0x3a8a5a, 0xc23a32),
+      OUTFITS.hanbokF(0x7a8a3a, 0x5e6e2c, 0xe8b030),
       OUTFITS.hanbokF(0xffffff, 0x8fd0f0, 0x3a7ad8),
     ],
     tip: ['한복을 입으면 경복궁 같은 고궁에 무료로 들어갈 수 있어요.', 'Wear hanbok and get free entry to royal palaces like Gyeongbokgung.'],
   },
   park: {
+    crew: ['noah', 'sofia', 'hana', 'kofi'],
     bg: 'park', ko: '놀이공원에 어울리는 옷 입기', en: 'Dress right for a theme park', item: 'uniform',
     outfits: [OUTFITS.uniformM, OUTFITS.uniformF, OUTFITS.uniformF, OUTFITS.uniformF],
     tip: ['친구들과 교복을 빌려 입고 놀이공원에 가는 게 요즘 인기예요.', 'Renting school uniforms for a theme-park day with friends is a popular trend.'],
@@ -288,7 +293,7 @@ export class DressCode extends BaseScene {
       [70, 110, 530, 570].forEach((x) => this.char('guard', x, 262, { anim: 'idle' }));
     }
     this.addHud();
-    const ids = ['leo', 'hana', 'amara', 'mei'];
+    const ids = v.crew;
     const xs = [165, 270, 375, 480];
     const defs = ids.map((id) => (id === 'hana' ? { ...CAST.hana, outfit: OUTFITS.hanaLv1 } : CAST[id]));
     const crew = ids.map((id, i) => {

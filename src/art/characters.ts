@@ -17,26 +17,30 @@ export const FACE_CY = 40;
 export type Skin = 'fair' | 'light' | 'tan' | 'brown' | 'dark';
 export type HairStyle =
   | 'wavy' | 'long' | 'short' | 'messy' | 'bob' | 'ponytail' | 'bun' | 'puff'
-  | 'locs' | 'slick' | 'pigtails' | 'buzz' | 'braid' | 'curly';
+  | 'locs' | 'slick' | 'pigtails' | 'buzz' | 'braid' | 'curly' | 'fluffy' | 'twists';
 export type TopStyle =
   | 'tee' | 'longsleeve' | 'jacket' | 'suit' | 'uniform' | 'hanbokF' | 'hanbokM' | 'monk'
-  | 'jjimjil' | 'crop' | 'dress' | 'sweater' | 'hoodie' | 'runvest' | 'runjacket' | 'apron' | 'cardigan';
+  | 'jjimjil' | 'crop' | 'dress' | 'sweater' | 'hoodie' | 'runvest' | 'runjacket' | 'apron' | 'cardigan'
+  | 'pinafore' | 'blouse';
 export type BottomStyle = 'jeans' | 'pants' | 'shorts' | 'skirt' | 'chima' | 'baji' | 'baggy' | 'none';
 export type Acc =
-  | 'glasses' | 'sunglasses' | 'headphones' | 'cap' | 'crown' | 'towel' | 'headband' | 'beanie' | 'ribbon' | 'gat';
+  | 'glasses' | 'sunglasses' | 'headphones' | 'cap' | 'crown' | 'towel' | 'headband' | 'beanie' | 'ribbon' | 'gat' | 'flower';
 
 export interface Outfit {
   top: TopStyle;
   topColor: Color;
   topColor2?: Color;
-  pattern?: 'plaid' | 'stripe';
+  pattern?: 'plaid' | 'stripe' | 'patch' | 'cross';
   patternColor?: Color;
   bottom: BottomStyle;
   bottomColor: Color;
   bottomColor2?: Color;
   shoes: Color;
   barefoot?: boolean;
+  socks?: Color;
   backpack?: Color;
+  bag?: Color; // 크로스백
+  waistTie?: Color; // 허리에 묶은 니트
   acc?: Acc[];
   accColor?: Color;
 }
@@ -122,6 +126,8 @@ const GIRLS = new Set(['hana', 'amara', 'mei', 'sofia', 'emma', 'server', 'styli
 export const isGirl = (id: string) => GIRLS.has(id);
 const IRIS: Record<string, Color> = { hana: 0x9a5a34, leo: 0x3f86d8, sofia: 0x3a9aa8, emma: 0x5f9a3e, james: 0x5a70b0, mei: 0x6a4a3a };
 const INK = 0x2a1830;
+const OUTLINE = 0x1b1828;
+const EYE = 0x1b1626;
 const MOUTH = 0x8a2a3e;
 
 type P = [number, number];
@@ -225,7 +231,7 @@ function inPoly(pts: P[], x: number, y: number) {
 
 // 색조를 살짝 옮긴 3톤 (그림자는 보랏빛, 하이라이트는 따뜻하게)
 function tone(c: Color, k: number): Color {
-  if (k > 0) return mix(c, 0xfff3de, 0.3);
+  if (k > 0) return mix(c, 0xfff3de, 0.18);
   if (k === -1) return mix(shade(c, 0.8), 0x3c2c7a, 0.1);
   return mix(shade(c, 0.6), 0x281a52, 0.2);
 }
@@ -288,7 +294,7 @@ function toCanvas(s: Spr): PixelCanvas {
       const i = y * s.w + x;
       if (s.id[i]) { put(x, y, s.col[i]); continue; }
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        if (s.idAt(x + dx, y + dy)) { put(x, y, mix(shade(s.get(x + dx, y + dy), 0.4), 0x1c1236, 0.45)); break; }
+        if (s.idAt(x + dx, y + dy)) { put(x, y, mix(shade(s.get(x + dx, y + dy), 0.3), OUTLINE, 0.8)); break; }
       }
     }
   return pc;
@@ -340,84 +346,69 @@ function decalFace(c: Ctx, r: FaceRec) {
   const s = c.s;
   const put = (x: number, y: number, col: Color) => s.dot(x, y, col, r.id);
   const { cx, cy, face } = r;
-  const iris = c.iris;
-  const D = mix(iris, 0x140a18, 0.55), I = iris, L = mix(iris, 0xffffff, 0.4);
-  const brow = mix(shade(c.hc, 0.75), c.skin, 0.25);
-  const pat = (rows: string[], x0: number, y0: number) => rows.forEach((row, j) => [...row].forEach((ch, i) => {
-    const col = ch === 'K' ? INK : ch === 'D' ? D : ch === 'I' ? I : ch === 'L' ? L : ch === 'W' || ch === 'w' ? 0xffffff : -1;
-    if (col >= 0) put(x0 + i, y0 + j, col);
-  }));
-  const OPEN = ['.KKKK.', 'KKKKKK', 'KWWDDK', 'KWWDDK', 'KDDDIK', 'KDIIIK', 'KILLwK', '.KKKK.'];
-  const SIDE = ['.KKK', 'KKKK', 'KWWK', 'KWDK', 'KDIK', 'KILK', '.KKK'];
-  const HAPPY = ['.KKKK.', 'KK..KK', 'K....K'];
-  const FLAT = ['KKKKKK', '.KKKK.'];
+  void INK; void MOUTH;
+  const pat = (rows: string[], x0: number, y0: number, col: Color = EYE) =>
+    rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === 'K') put(x0 + i, y0 + j, col); }));
   const blush = mix(c.skin, 0xff6f8f, 0.42);
-  if (r.side) {
-    const ex = cx + 6, ey = cy - 2;
-    if (!c.acc.includes('sunglasses')) {
-      if (face === 'joy' || face === 'chew') pat(['.KKK', 'KK.K', 'K...'], ex, ey + 3);
-      else pat(SIDE, ex, ey);
-      for (let i = 0; i < 4; i++) put(ex + i, ey - 3 + (i === 0 ? 1 : 0), brow);
+  const MO = 0x2a1424, RED = 0xd23e4e, TON = 0xf48a98;
+  // 콘티의 활짝 웃는 입: 위는 일자, 아래는 둥근 D 모양 (안쪽 빨강 + 혀)
+  const openMouth = (X: number, Y: number, w: number, h: number) => {
+    const x0 = X - Math.floor(w / 2);
+    for (let j = 0; j < h; j++) {
+      const ins = j === h - 1 ? 1 : 0;
+      for (let i = ins; i < w - ins; i++) {
+        const edge = j === 0 || j === h - 1 || i === ins || i === w - 1 - ins;
+        put(x0 + i, Y + j, edge ? MO : j >= h - 2 && i > 1 && i < w - 2 ? TON : RED);
+      }
     }
-    s.dot(cx + 8, cy + 6, blush, r.id); s.dot(cx + 9, cy + 6, blush, r.id); s.dot(cx + 10, cy + 6, blush, r.id);
-    [[0, 0], [1, 1], [2, 1], [3, 0]].forEach(([i, j]) => put(cx + 9 + i, cy + 9 + j, MOUTH));
+  };
+  const EYE_ROWS = (h: number) => Array.from({ length: h }, () => 'KKK');
+  const EH = 6;
+  if (r.side) {
+    const ex = cx + 7, ey = cy - 1;
+    if (!c.acc.includes('sunglasses')) {
+      if (face === 'joy' || face === 'chew') pat(['.K.', 'K.K'], ex - 1, ey + 2);
+      else pat(['KK', 'KK', 'KK', 'KK', 'KK', 'KK'], ex, ey - 1);
+    }
+    for (let i = 0; i < 3; i++) { put(cx + 8 + i, cy + 6, blush); put(cx + 8 + i, cy + 7, blush); }
+    openMouth(cx + 11, cy + 8, 5, 4);
     return;
   }
-  const eyes: [number, boolean][] = [[cx - 12, false], [cx + 6, true]];
+  const ey = cy - 2;
   if (!c.acc.includes('sunglasses')) {
-    for (const [ex, right] of eyes) {
-      const ey = cy - 1;
+    for (const [ex, right] of [[cx - 9, false], [cx + 7, true]] as [number, boolean][]) {
       const happy = face === 'joy' || face === 'chew' || (face === 'wink' && right);
-      if (happy) pat(HAPPY, ex, ey + 3);
-      else if (face === 'focus') pat(FLAT, ex, ey + 4);
-      else {
-        pat(OPEN, ex, ey);
-        if (face === 'surprise') { put(ex + 1, ey + 6, 0xffffff); }
-        if (c.girl) {
-          // 바깥쪽 속눈썹
-          const ox = right ? ex + 6 : ex - 1, ox2 = right ? ex + 7 : ex - 2;
-          put(ox, ey + 1, INK); put(ox, ey, INK); put(ox2, ey - 1, INK);
-        }
-      }
-      // 눈썹
-      const by = ey - (face === 'surprise' ? 5 : 4);
-      for (let i = 0; i < 4; i++) put(ex + 1 + i, by + (right ? (i === 3 ? 1 : 0) : (i === 0 ? 1 : 0)), brow);
+      if (happy) pat(['.KKK.', 'K...K'], ex - 1, ey + 2);
+      else if (face === 'focus') pat(['KKK', 'KKK'], ex, ey + 3);
+      else if (face === 'surprise') pat(EYE_ROWS(EH + 1), ex, ey - 1);
+      else pat(EYE_ROWS(EH), ex, ey);
     }
   }
-  // 볼터치
-  const bw = face === 'chew' ? 4 : 3;
-  for (const bx of [cx - 12, cx + 12]) {
-    for (let i = -bw; i <= bw; i++) { put(bx + i, cy + 7, blush); if (Math.abs(i) < bw) put(bx + i, cy + 8, blush); }
-    put(bx - 1, cy + 7, mix(blush, 0xffffff, 0.45));
-  }
-  // 코
-  put(cx, cy + 5, shade(c.skin, 0.84));
+  // 볼터치 (눈 바깥 아래)
+  const bw = face === 'chew' ? 5 : 4;
+  for (const bx of [cx - 10 - bw, cx + 11]) for (let i = 0; i < bw; i++) { put(bx + i, cy + 5, blush); put(bx + i, cy + 6, blush); }
+  void bw;
   // 입
-  const X = cx, Y = cy + 9, inner = 0xa83248, tongue = 0xff8a9a;
+  const X = cx, Y = cy + 6;
   switch (face) {
     case 'open': case 'joy': case 'wink':
-      for (let i = -3; i <= 3; i++) put(X + i, Y, MOUTH);
-      put(X - 3, Y + 1, MOUTH); put(X + 3, Y + 1, MOUTH);
-      for (let i = -2; i <= 2; i++) put(X + i, Y + 1, inner);
-      put(X - 2, Y + 2, MOUTH); put(X + 2, Y + 2, MOUTH);
-      for (let i = -1; i <= 1; i++) { put(X + i, Y + 2, tongue); put(X + i, Y + 3, MOUTH); }
+      openMouth(X, Y, 9, 5);
+      break;
+    case 'smile':
+      openMouth(X, Y, 7, 4);
       break;
     case 'surprise':
-      for (let i = -1; i <= 1; i++) { put(X + i, Y, MOUTH); put(X + i, Y + 3, MOUTH); }
-      for (let j = 1; j <= 2; j++) { put(X - 2, Y + j, MOUTH); put(X + 2, Y + j, MOUTH); for (let i = -1; i <= 1; i++) put(X + i, Y + j, inner); }
+      pat(['.KK.', 'K..K', 'K..K', '.KK.'], X - 2, Y, MO);
+      put(X - 1, Y + 1, RED); put(X, Y + 1, RED); put(X - 1, Y + 2, RED); put(X, Y + 2, RED);
       break;
     case 'focus':
-      for (let i = -2; i <= 2; i++) put(X + i, Y + 1, MOUTH);
+      for (let i = -1; i <= 1; i++) put(X + i, Y + 1, MO);
       break;
     case 'chew':
-      [[-3, 1], [-2, 0], [-1, 1], [0, 0], [1, 1], [2, 0], [3, 1]].forEach(([i, j]) => put(X + i, Y + j, MOUTH));
-      break;
-    case 'normal':
-      [[-2, 0], [-1, 1], [0, 1], [1, 1], [2, 0]].forEach(([i, j]) => put(X + i, Y + j, MOUTH));
+      [[-2, 0], [-1, 1], [0, 0], [1, 1], [2, 0]].forEach(([i, j]) => put(X + i, Y + 1 + j, MO));
       break;
     default:
-      // ω 입
-      [[-3, 0], [-2, 1], [-1, 1], [0, 0], [1, 1], [2, 1], [3, 0]].forEach(([i, j]) => put(X + i, Y + j, MOUTH));
+      [[-2, 0], [-1, 1], [0, 1], [1, 1], [2, 0]].forEach(([i, j]) => put(X + i, Y + j, MO));
   }
 }
 
@@ -455,6 +446,7 @@ function bangs(c: Ctx, cx: number, cy: number, kind: Bang) {
       case 'curly': b = cy - 8 + Math.round(2.5 * Math.abs(Math.sin(u * 0.62))); break;
       case 'short': b = cy - 10 + [0, 1, 2, 1][k % 4]; break;
     }
+    b = Math.min(b, cy - 4);
     bottoms.push(b);
     for (let y = cy - 16; y <= b; y++) s.px(x, y);
   }
@@ -626,6 +618,20 @@ function hairFrontStyle(c: Ctx, cx: number, cy: number, style: HairStyle) {
       break;
     }
     case 'curly': cap(c, cx, cy, 19.5); bangs(c, cx, cy, 'curly'); locks(c, cx, cy, 8, 1, 6); break;
+    case 'fluffy': {
+      // 콘티 레오·노아: 귀를 덮는 몽실몽실한 웨이브 단발
+      cap(c, cx, cy, 20, cy + 1);
+      bangs(c, cx, cy, 'curly');
+      fluff(c, cx, cy, 99);
+      break;
+    }
+    case 'twists': {
+      // 콘티 코피: 위로 솟고 이마로 내려오는 짧은 트위스트
+      cap(c, cx, cy, 19.5, cy - 2);
+      const id = s.part(c.hc, HF); c.hairIds.push(id);
+      twists(c, cx, cy, false);
+      break;
+    }
     case 'locs': {
       cap(c, cx, cy, 19, cy - 4);
       bangs(c, cx, cy, 'short');
@@ -634,6 +640,40 @@ function hairFrontStyle(c: Ctx, cx: number, cy: number, style: HairStyle) {
       s.part(0xd8a040, { sr: 1, sb: 0 }); s.rect(cx - 3, cy - 22, 6, 2);
       break;
     }
+  }
+}
+
+const FLUFF: [number, number, number][] = [[-18, 2, 3.5], [18, 2, 3.5], [-17, -6, 4.5], [17, -6, 4.5], [-13, -14, 6], [13, -14, 6], [-5, -18, 6], [5, -18, 6], [-9, -10, 4], [1, -11, 4.5], [10, -10, 4]];
+
+// 몽실한 웨이브 머리: 하나의 덩어리 + 뭉치마다 초승달 결 (maxDx: 옆모습에서 얼굴 쪽 뭉치 생략)
+function fluff(c: Ctx, cx: number, cy: number, maxDx: number) {
+  const s = c.s;
+  const id = s.part(c.hc, HF); c.hairIds.push(id);
+  const L = FLUFF.filter(([dx]) => dx <= maxDx);
+  L.forEach(([dx, dy, r]) => s.ellipse(cx + dx, cy + dy, r, r));
+  const dk = shade(c.hc, 0.7);
+  L.forEach(([dx, dy, r]) => {
+    if (r < 5 || dy > -8) return;
+    // 뭉치 아래쪽에 짧은 곡선 결
+    const side = dx < 0 ? 1 : -1;
+    for (let a = 0; a < 5; a++) {
+      const th = Math.PI * (0.35 + a * 0.12);
+      s.dot(cx + dx + side * Math.round(Math.cos(th) * (r - 2)), cy + dy + Math.round(Math.sin(th) * (r - 2)), dk, id);
+    }
+  });
+}
+
+function twists(c: Ctx, cx: number, cy: number, back: boolean) {
+  const s = c.s;
+  const dk = shade(c.hc, 0.55), hi = mix(c.hc, 0xb8b0e8, 0.3);
+  for (let x = cx - 18; x <= cx + 18; x += 4) {
+    const u = (x - cx) / 18, odd = Math.round((x - cx) / 4) % 2 !== 0;
+    const top = cy - 23 + Math.round(u * u * 7) - (odd ? 1 : 0);
+    const bot = back ? cy + 4 : Math.abs(u) > 0.75 ? cy + 2 : cy - 6 + (odd ? 1 : 0);
+    s.ink(c.hc); s.seg(x, top, x, bot, 1.8);
+    // 가닥 사이 홈 + 마디 하이라이트
+    if (odd) for (let y = top + 2; y < bot - 1; y++) s.dot(x + 2, y, dk, c.hairIds);
+    for (let y = top + 2; y < bot - 1; y += 4) s.dot(x - 1, y, hi, c.hairIds);
   }
 }
 
@@ -715,6 +755,14 @@ function accHead(c: Ctx, cx: number, cy: number, back: boolean) {
       s.part(shade(col, 0.75), { flat: true }); s.ellipse(x, y, 2, 2);
       break;
     }
+    case 'flower': {
+      // 콘티 소피아·엠마의 분홍 꽃 핀 (엠마는 똥머리 옆)
+      const fx = c.d.hair === 'bun' ? cx + (back ? -7 : 7) : cx + (back ? 15 : -15), fy = c.d.hair === 'bun' ? cy - 20 : cy - 14;
+      s.part(0xffd2de, { sr: 1, sb: 1, hl: 0 });
+      for (const [dx, dy] of [[0, -2.5], [2.4, -0.8], [1.5, 2], [-1.5, 2], [-2.4, -0.8]]) s.ellipse(fx + dx, fy + dy, 1.7, 1.7);
+      s.part(0xf2c040, { flat: true }); s.rect(fx - 0.5, fy - 0.5, 2, 2);
+      break;
+    }
     case 'gat': {
       s.part(0x1d1b22, { sr: 2, sb: 0, hl: 1 });
       s.rect(cx - 10, cy - 31, 21, 17);
@@ -776,6 +824,7 @@ function sleeveInfo(o: Outfit): { col: Color; len: number; wide: boolean; cuff?:
     case 'crop': return { col: o.topColor, len: 6, wide: false };
     case 'hanbokF': return { col: o.topColor, len: 99, wide: true, cuff: o.topColor2 };
     case 'hanbokM': case 'monk': return { col: o.topColor, len: 99, wide: true };
+    case 'pinafore': return { col: o.topColor2 ?? 0xf3ead6, len: 99, wide: false };
     default: return { col: o.topColor, len: 99, wide: false };
   }
 }
@@ -817,7 +866,7 @@ function torsoFront(c: Ctx, ty: number) {
   if (o.top === 'crop') { s.part(c.skin, SKIN_O); s.rect(38, ty + 13, 21, 13); }
   const id = s.part(T, { sr: 3, sb: 2, hl: 1 });
   c.torsoIds.push(id);
-  s.poly([[40, ty], [57, ty], [61, ty + 4], [61, ty + short], [36, ty + short], [36, ty + 4]]);
+  s.poly([[39, ty], [58, ty], [62, ty + 4], [62, ty + short], [35, ty + short], [35, ty + 4]]);
   const L = (x0: number, y0: number, x1: number, y1: number, col: Color) => {
     const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
     for (let k = 0; k <= n; k++) s.dot(x0 + ((x1 - x0) * k) / n, y0 + ((y1 - y0) * k) / n, col, id);
@@ -845,7 +894,11 @@ function torsoFront(c: Ctx, ty: number) {
       s.part(tie, { sr: 1, sb: 0, hl: 1 });
       s.poly([[47, ty + 1], [50, ty + 1], [51, ty + 13], [48.5, ty + 15], [46, ty + 13]]);
       L(42, ty + 1, 47, ty + 14, shade(T, 0.65)); L(55, ty + 1, 50, ty + 14, shade(T, 0.65));
-      if (o.top === 'uniform') { s.part(0xf2d04a, { flat: true }); s.rect(54, ty + 8, 3, 3); }
+      if (o.top === 'uniform') {
+        s.part(0xf2d04a, { flat: true }); s.rect(54, ty + 8, 3, 3);
+        // 교복 넥타이 사선 줄무늬
+        for (let y = ty + 3; y < ty + 14; y += 3) for (let x = 46; x <= 51; x++) s.dot(x, y + (x - 46 > 2 ? 1 : 0), 0x22305a, [s.cur - 1]);
+      }
       s.part(shade(T, 0.85), { flat: true }); s.rect(46, ty + 18, 1, 1); s.rect(46, ty + 22, 1, 1);
       break;
     }
@@ -875,11 +928,30 @@ function torsoFront(c: Ctx, ty: number) {
       break;
     }
     case 'dress': neck(); break;
+    case 'pinafore': {
+      // 크림색 블라우스 위에 검정 멜빵 원피스 (콘티 메이)
+      s.part(T2, { sr: 2, sb: 1, hl: 1 });
+      s.poly([[40, ty], [57, ty], [61, ty + 4], [61, ty + 9], [36, ty + 9], [36, ty + 4]]);
+      s.part(T, { sr: 2, sb: 1, hl: 1 });
+      s.poly([[40, ty + 6], [57, ty + 6], [58, ty + 25], [39, ty + 25]]);
+      s.rect(41, ty, 3, 7); s.rect(53, ty, 3, 7);
+      neck();
+      break;
+    }
+    case 'blouse': {
+      // 흰 칼라 블라우스 (콘티 소피아)
+      s.part(0xffffff, { sr: 1, sb: 1, hl: 0 });
+      s.poly([[42, ty - 1], [48, ty + 3], [44, ty + 5]]); s.poly([[54, ty - 1], [48, ty + 3], [52, ty + 5]]);
+      neck();
+      break;
+    }
     case 'sweater': {
       s.part(0xffffff, { sr: 1, sb: 1, hl: 0 });
       s.poly([[42, ty - 1], [48, ty + 3], [44, ty + 5]]); s.poly([[54, ty - 1], [48, ty + 3], [52, ty + 5]]);
       neck();
       for (let x = 37; x <= 60; x += 2) { s.dot(x, ty + 22, shade(T, 0.78), id); s.dot(x, ty + 23, shade(T, 0.78), id); }
+      // 아래로 살짝 보이는 셔츠 밑단
+      if (o.topColor2) { s.part(o.topColor2, { sr: 1, sb: 1, hl: 0 }); s.rect(37, ty + 23, 24, 3); }
       break;
     }
     case 'hoodie': {
@@ -915,6 +987,19 @@ function torsoFront(c: Ctx, ty: number) {
     s.part(shade(o.backpack, 0.82), { sr: 1, sb: 0, hl: 0 });
     s.rect(39, ty + 1, 3, 14); s.rect(55, ty + 1, 3, 14);
   }
+  if (o.waistTie) {
+    // 허리에 묶은 니트: 띠 + 매듭 + 늘어진 소매
+    s.part(o.waistTie, { sr: 2, sb: 1, hl: 1 });
+    s.rect(35, ty + 20, 28, 5);
+    s.part(o.waistTie, { sr: 1, sb: 1, hl: 1 });
+    s.ellipse(48, ty + 25, 3.5, 2.5); s.rect(43, ty + 25, 4, 9); s.rect(50, ty + 25, 4, 9);
+  }
+  if (o.bag) {
+    // 어깨에서 반대쪽 허리로 내려오는 크로스백
+    s.part(shade(o.bag, 0.75), { flat: true });
+    for (let k = 0; k <= 19; k++) s.rect(41 + Math.round(k * 0.7), ty + 1 + k, 2, 1);
+    s.part(o.bag, { sr: 1, sb: 1, hl: 1 }); s.rect(53, ty + 19, 8, 6);
+  }
 }
 
 function torsoBack(c: Ctx, ty: number) {
@@ -923,7 +1008,7 @@ function torsoBack(c: Ctx, ty: number) {
   c.torsoIds.push(id);
   const short = o.top === 'crop' ? 15 : o.top === 'hanbokF' ? 13 : 25;
   if (o.top === 'crop') { s.part(c.skin, SKIN_O); s.rect(38, ty + 13, 21, 13); s.part(o.topColor, { sr: 3, sb: 2, hl: 1 }); }
-  s.poly([[40, ty], [57, ty], [61, ty + 4], [61, ty + short], [36, ty + short], [36, ty + 4]]);
+  s.poly([[39, ty], [58, ty], [62, ty + 4], [62, ty + short], [35, ty + short], [35, ty + 4]]);
   if (o.top === 'hoodie') { s.part(shade(o.topColor, 0.85), { sr: 2, sb: 1, hl: 1 }); s.ellipse(48, ty + 4, 9, 7); }
   if (o.backpack) {
     const b = o.backpack;
@@ -957,7 +1042,7 @@ function legsFront(c: Ctx, legs: Legs, up: number) {
   if (legs === 'walk2') { rUp = 2; lx -= 1; rx += 1; }
   if (legs === 'wide') spread = 5;
   if (legs === 'kneelUp') rUp = 7;
-  const wide = o.bottom === 'baggy' || o.bottom === 'baji' ? 6 : 4.5;
+  const wide = o.bottom === 'baggy' || o.bottom === 'baji' ? 6.5 : 5.5;
   const leg = (cx: number, upY: number, dir: number) => {
     const off = spread * dir;
     const top = 79, bot = 103 - upY;
@@ -967,6 +1052,7 @@ function legsFront(c: Ctx, legs: Legs, up: number) {
     if (o.bottom === 'shorts') { s.part(B, { sr: 2, sb: 1, hl: 0 }); s.poly([[cx - 5.5, top], [cx + 6.5, top], [cx + 6.5 + off * 0.4, top + 11], [cx - 5.5 + off * 0.4, top + 11]]); }
     if (o.bottom === 'jeans') { s.dot(cx + off * 0.6, 95 - upY, mix(B, 0xffffff, 0.15)); }
     if (o.bottom === 'baji') { s.part(0xf4f0e8, { flat: true }); s.rect(cx - wide + off, bot - 3, wide * 2 + 1, 2); }
+    if (o.socks && !pantsLeg) { s.part(o.socks, { sr: 1, sb: 0, hl: 0 }); s.poly([[cx - wide + off * 0.8, bot - 5], [cx + wide + 1 + off * 0.8, bot - 5], [cx + wide + 1 + off, bot + 1], [cx - wide + off, bot + 1]]); }
     // 신발
     s.part(shoe, { sr: 2, sb: 1, hl: 1 });
     s.ellipse(cx + off + dir * 0.5, bot + 3, 6, 3.6);
@@ -982,13 +1068,13 @@ function legsFront(c: Ctx, legs: Legs, up: number) {
   switch (o.bottom) {
     case 'jeans': case 'pants': case 'shorts': case 'baggy': case 'baji': {
       s.part(B, { sr: 2, sb: 1, hl: 1 });
-      s.rect(37, 77 + Math.min(up, 2), 24, 7);
+      s.rect(36, 77 + Math.min(up, 2), 26, 7);
       if (o.bottom === 'jeans') { s.part(0xd8b04a, { flat: true }); s.px(48, 79 + Math.min(up, 2)); }
       break;
     }
     case 'skirt': {
       const id = s.part(B, { sr: 3, sb: 2, hl: 1 });
-      s.poly([[37, 77 + up], [60, 77 + up], [65, 94], [32, 94]]);
+      s.poly([[36, 77 + up], [61, 77 + up], [66, 94], [31, 94]]);
       if (o.bottomColor2) for (let y = 77 + up; y < 94; y++) for (let x = 32; x < 66; x++) {
         if ((x - 32) % 5 === 0 || (y - 77) % 5 === 0) s.dot(x, y, (x - 32) % 5 === 0 && (y - 77) % 5 === 0 ? shade(o.bottomColor2, 0.8) : o.bottomColor2, id);
       }
@@ -1071,6 +1157,8 @@ function drawSide(c: Ctx, phase: number) {
   s.ellipse(cx - 2, cy - 3, 19, 19.5, (x, y) => y <= cy - 11 || (x <= cx - 5 + Math.max(0, cy - 4 - y) * 0.4 && y <= cy + (bald ? -4 : 8)));
   if (!bald) s.poly([[cx + 2, cy - 17], [cx + 16, cy - 11], [cx + 15, cy - 6], [cx + 10, cy - 9], [cx + 6, cy - 6], [cx + 2, cy - 10]]);
   if (c.d.hair === 'messy') { s.poly([[cx - 8, cy - 20], [cx - 2, cy - 28], [cx + 2, cy - 20]]); s.poly([[cx + 2, cy - 20], [cx + 10, cy - 26], [cx + 10, cy - 17]]); }
+  if (c.d.hair === 'fluffy') fluff(c, cx - 2, cy, 8);
+  if (c.d.hair === 'twists') twists(c, cx - 3, cy, true);
   c.acc.forEach(() => undefined);
   accHead(c, cx - 1, cy, false);
   armDraw(armsF[phase], false);
@@ -1127,6 +1215,21 @@ export function renderPose(d: CharDef, poseName: string, outfit?: Outfit): Pixel
     for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
       const k = s.idAt(x, y);
       if (!c.torsoIds.includes(k) || s.get(x, y) !== o.topColor) continue;
+      if (o.pattern === 'cross') {
+        // 니트의 작은 + 무늬 (줄마다 엇갈리게)
+        const m6 = (v: number) => ((v % 6) + 6) % 6;
+        const row = Math.floor((y - 57) / 6);
+        const mx = m6(x - 35 + (row % 2) * 3), my = m6(y - 57);
+        if ((mx === 2 && my >= 1 && my <= 3) || (my === 2 && mx >= 1 && mx <= 3)) s.dot(x, y, alt);
+        continue;
+      }
+      if (o.pattern === 'patch') {
+        const PAT = [0xd8443a, 0x3a6fd0, 0xf2c94c, 0x3a9a5a];
+        const m = (v: number) => ((v % 4) + 4) % 4;
+        const cell = PAT[m(Math.floor((x - 36) / 4) + Math.floor((y - 57) / 4) * 3)];
+        s.dot(x, y, m(x - 36) === 0 || m(y - 57) === 0 ? shade(cell, 0.72) : cell);
+        continue;
+      }
       if (o.pattern === 'plaid') {
         const a = (x - 36) % 5 === 0, b = (y - 57) % 5 === 0;
         if (a && b) s.dot(x, y, shade(alt, 0.8)); else if (a || b) s.dot(x, y, mix(o.topColor, alt, 0.7));
@@ -1136,9 +1239,7 @@ export function renderPose(d: CharDef, poseName: string, outfit?: Outfit): Pixel
   const finish = () => {
     shadeAll(s);
     c.faces.forEach((f) => decalFace(c, f));
-    if (!['buzz'].includes(d.hair) && !c.acc.some((a) => a === 'cap' || a === 'towel' || a === 'beanie')) {
-      c.faces.forEach((f) => hairShine(c, f.cx - (f.side ? 3 : 0), f.cy));
-    }
+    void hairShine;
     c.faces.filter((f) => !f.side).forEach((f) => accFace(c, f.cx, f.cy));
     return toCanvas(s);
   };
@@ -1151,7 +1252,7 @@ export function renderPose(d: CharDef, poseName: string, outfit?: Outfit): Pixel
   const ty = 57 + up, cx = FACE_CX, cy = FACE_CY + up;
   const back = pose.view === 'back';
   const frontArms: Arm[] = ['mouth', 'hold', 'fwd', 'v', 'chin', 'hip'];
-  const shL = 39, shR = 57, shY = ty + 5;
+  const shL = 38, shR = 58, shY = ty + 5;
 
   if (!back) backMass(c, cx, cy, d.hair);
   if (!back && d.hair === 'braid') { /* 앞으로 넘긴 땋은 머리는 hairFront에서 */ }
@@ -1167,7 +1268,9 @@ export function renderPose(d: CharDef, poseName: string, outfit?: Outfit): Pixel
     // 뒤통수 전체를 덮는 머리 + 스타일별 긴 머리
     const id = s.part(d.hair === 'buzz' ? mix(c.hc, c.skin, 0.25) : c.hc, HF); c.hairIds.push(id);
     s.ellipse(cx, cy - 2, 19.5, 18.5);
-    if (d.hair !== 'buzz' && d.hair !== 'short' && d.hair !== 'slick' && d.hair !== 'messy') {
+    if (d.hair === 'fluffy') fluff(c, cx, cy, 99);
+    if (d.hair === 'twists') twists(c, cx, cy, true);
+    if (!['buzz', 'short', 'slick', 'messy', 'fluffy', 'twists'].includes(d.hair)) {
       const hairBackView: HairStyle = d.hair === 'braid' ? 'braid' : d.hair;
       if (hairBackView === 'braid') { s.part(c.hc, HF); for (let i = 0; i < 7; i++) s.ellipse(cx + (i % 2), cy + 14 + i * 5, 4, 3.2); }
       else backMass(c, cx, cy, hairBackView);

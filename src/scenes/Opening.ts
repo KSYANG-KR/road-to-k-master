@@ -78,17 +78,19 @@ export class Arrival extends BaseScene {
     this.tweens.add({ targets: plane, x: 600, duration: 3200, ease: 'Quad.Out' });
 
     // --- #02~#04 여행자들이 양쪽에서 뛰어들어와 환호 ---
-    const xs = [70, 140, 210, 280, 360, 430, 500, 570];
-    const cases = [0x3d6fd6, 0xf08ab0, 0x3a8a5a, 0xc0c0c8, 0x2e3f74, 0xf0e2c0, 0x5a5a66, 0x3a3a4a];
+    // 콘티 공항 컷처럼 9명이 각자 색 캐리어를 끌고 들어온다
+    const N = LINEUP.length, half = Math.ceil(N / 2);
+    const xs = LINEUP.map((_, i) => 60 + i * 65);
+    const cases = [0x3d6fd6, 0xf08ab0, 0x3a8a5a, 0xc0c0c8, 0xf0a030, 0x2e3f74, 0xf0e2c0, 0x5a5a66, 0x3a3a4a];
     const crew = LINEUP.map((id, i) => {
-      const fromLeft = i < 4;
-      const s = this.char(id, fromLeft ? -40 - i * 30 : W + 40 + (7 - i) * 30, 300, { scale: 2 });
+      const fromLeft = i < half;
+      const s = this.char(id, fromLeft ? -40 - i * 30 : W + 40 + (N - 1 - i) * 30, 300, { scale: 2 });
       const bag = suitcase(this, s.x, 300, cases[i]);
       return { s, bag, x: xs[i], i };
     });
     await Promise.all(crew.map(async ({ s, bag, x, i }) => {
       await this.wait(i * 60);
-      this.tweens.add({ targets: bag, x: x + (i < 4 ? 26 : -26), duration: 1100 });
+      this.tweens.add({ targets: bag, x: x + (i < half ? 24 : -24), duration: 1100 });
       await this.walk(s, x, 300, 260);
     }));
     crew.forEach(({ s }, i) => { s.setFlipX(false); this.time.delayedCall(i * 70, () => this.play(s, 'cheer')); this.emote(s, (['!', '♥', '♪', '★'] as const)[i % 4], 200 + i * 120); });
@@ -139,7 +141,7 @@ export class Title extends BaseScene {
 
     // 하단 캐릭터 라인업
     LINEUP.forEach((id, i) => {
-      const s = this.char(id, 82 + i * 68, 350, { scale: 2 });
+      const s = this.char(id, 64 + i * 64, 350, { scale: 2 });
       this.time.delayedCall(400 + i * 90, () => this.play(s, 'cheer'));
       this.time.addEvent({ delay: 2600, loop: true, startAt: i * 300, callback: () => this.hop(s, 6) });
     });
@@ -180,7 +182,7 @@ export class CastRoll extends BaseScene {
   async create() {
     this.cameras.main.setBackgroundColor('#2a1f6e');
     const spacing = 150;
-    const worldW = 120 + 7 * spacing + 200;
+    const worldW = 120 + (LINEUP.length - 1) * spacing + 200;
     // 위→아래 그라데이션 + 사선 줄무늬 + 무대 바닥
     const g = this.add.graphics().setDepth(-100);
     const A = Phaser.Display.Color.ValueToColor(0x232a5e), B = Phaser.Display.Color.ValueToColor(0x0b0f24);
@@ -208,8 +210,8 @@ export class CastRoll extends BaseScene {
     });
     this.cameras.main.setBounds(0, 0, worldW, H);
     await this.reveal();
-    this.camPan(120 + 7 * spacing - 200, H / 2, 6000);
-    await this.wait(6400);
+    this.camPan(120 + (LINEUP.length - 1) * spacing - 200, H / 2, 6600);
+    await this.wait(7000);
     await this.goto('CharSelect', {}, 'fade');
   }
 }

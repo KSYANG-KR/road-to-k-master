@@ -36,10 +36,10 @@ export class Ending extends BaseScene {
     const maskG = this.make.graphics({}, false).fillRect(SCR.x, SCR.y, SCR.w, SCR.h);
     screen.setMask(maskG.createGeometryMask());
 
-    // 관객: 뒷모습 8인
+    // 관객: 뒷모습 9인
     const crew = LINEUP.map((id, i) => {
       const def = id === 'hana' ? { ...CAST.hana, outfit: OUTFITS.hanaMax } : CAST[id];
-      const s = this.char(id, 120 + i * 58 + (i % 2) * 6, 352 - (i % 2) * 6, { scale: 2, def, key: `end_${id}` });
+      const s = this.char(id, 100 + i * 55 + (i % 2) * 6, 352 - (i % 2) * 6, { scale: 2, def, key: `end_${id}` });
       s.setFrame('back0');
       return s;
     });
@@ -135,7 +135,7 @@ export class Outro extends BaseScene {
     const groundY = worldH - 26;
     const crew = LINEUP.map((id, i) => {
       const def = id === 'hana' ? { ...CAST.hana, outfit: state.maxed ? OUTFITS.hanaMax : OUTFITS.hanaLv3 } : CAST[id];
-      const s = this.char(id, 96 + i * 64, groundY + (i % 2) * 4, { scale: 2, def, key: `out_${id}` });
+      const s = this.char(id, 64 + i * 64, groundY + (i % 2) * 4, { scale: 2, def, key: `out_${id}` });
       s.setFrame('back0');
       return s;
     });
