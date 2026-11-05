@@ -124,3 +124,41 @@ export function bridgeSignTex(scene: Phaser.Scene) {
     return pc;
   });
 }
+
+// 비행기: 꼬리 날개의 하트 자리에 픽셀 태극기를 그려 넣은 텍스처 (원본 아트 1도트 = 3px)
+const TAEGUK = [
+  'ooooooooooooooooo',
+  'owwwwwwwwwwwwwwwo',
+  'owkwwwwwwwwwwwkwo',
+  'owwkwwwwwwwwwkwwo',
+  'owwwwwwrrrwwwwwwo',
+  'owwwwwrrrrrwwwwwo',
+  'owwwwwrrrrbwwwwwo',
+  'owwwwwrbbbbwwwwwo',
+  'owwwwwwbbbwwwwwwo',
+  'owwkwwwwwwwwwkwwo',
+  'owkwwwwwwwwwwwkwo',
+  'owwwwwwwwwwwwwwwo',
+  'ooooooooooooooooo',
+];
+export function planeTex(scene: Phaser.Scene) {
+  const key = 'plane_kr';
+  if (scene.textures.exists(key)) return key;
+  const fr = scene.textures.getFrame('plane', 'plane');
+  const cv = document.createElement('canvas');
+  cv.width = fr.cutWidth; cv.height = fr.cutHeight;
+  const g = cv.getContext('2d')!;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(fr.source.image as CanvasImageSource, fr.cutX, fr.cutY, fr.cutWidth, fr.cutHeight, 0, 0, fr.cutWidth, fr.cutHeight);
+  // 하트 지우기 (꼬리 날개 바탕색으로)
+  g.fillStyle = '#f4f6fa';
+  g.fillRect(57, 51, 18, 16);
+  const col: Record<string, string> = { o: '#9aa6c4', w: '#ffffff', k: '#20202a', r: '#d6283c', b: '#1f4fa8' };
+  const P = 3, x0 = 62, y0 = 47;
+  TAEGUK.forEach((row, y) => [...row].forEach((c, x) => {
+    g.fillStyle = col[c];
+    g.fillRect(x0 + x * P, y0 + y * P, P, P);
+  }));
+  scene.textures.addCanvas(key, cv);
+  return key;
+}

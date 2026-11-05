@@ -9,6 +9,7 @@ import { CAST, LINEUP, PROFILE, setHero } from '../art/cast';
 import { state } from '../core/state';
 import { suitcaseTex } from '../art/props';
 import { pixText } from '../art/pixeltext';
+import { planeTex } from '../art/props';
 
 // 여행 가방 (코드 픽셀)
 export function suitcase(scene: Phaser.Scene, x: number, y: number, color: number) {
@@ -22,7 +23,7 @@ export class Intro extends BaseScene {
     playMusic('title');
     // --- #01 하늘을 나는 비행기 ---
     const sky = this.bg('sky');
-    const plane = this.add.image(-160, 120, 'plane', 'plane').setScale(0.5).setAngle(4);
+    const plane = this.add.image(-160, 120, planeTex(this)).setScale(0.5).setAngle(4);
     this.reveal();
     sfx.plane();
     this.tweens.add({ targets: sky, x: -10, duration: 4200 });
@@ -40,8 +41,13 @@ export class Arrival extends BaseScene {
 
   async create() {
     this.bg('airport');
-    // 창밖으로 착륙하는 비행기
-    const plane = this.add.image(170, 96, 'plane', 'plane').setScale(0.11).setAngle(6).setDepth(-50);
+    // 창밖으로 착륙하는 비행기: 유리창 안쪽(창살 뒤)에만 보이도록 창 유리 영역으로 마스크
+    // 창살 x 134~137 / 225~227 / 320~322 / 412~415 / 503~506, 유리 y 74~197 (배경 픽셀에서 측정)
+    const glass = this.make.graphics({}, false);
+    glass.fillStyle(0xffffff);
+    [[96, 134], [137, 225], [228, 320], [323, 412], [415, 503], [506, 545]].forEach(([a, b]) => glass.fillRect(a, 74, b - a, 124));
+    const plane = this.add.image(90, 86, planeTex(this)).setOrigin(0.5, 1).setScale(0.085).setAngle(7).setDepth(-50);
+    plane.setMask(glass.createGeometryMask());
     // 안내판 (면: x 186~452, y 26~62 → 중심 319, 44) — 배경 도트와 같은 크기의 픽셀 글자로 그려 넣음
     pixText(this, 319, 44, [
       { t: 'WELCOME TO KOREA', font: 'g14', color: '#f4f8ff', spacing: 1, bold: true },
@@ -57,10 +63,19 @@ export class Arrival extends BaseScene {
     banner(581, '즐거운여행', 'ENJOY');
     this.reveal();
     await this.wait(300);
-    this.tweens.add({ targets: plane, x: 330, y: 150, angle: 0, duration: 2200, ease: 'Sine.Out' });
-    await this.wait(2200);
-    sparkles(this, 300, 158, 6, [0xffffff, 0xdfe6ff], 10);
-    this.tweens.add({ targets: plane, x: 470, duration: 1500, ease: 'Quad.Out' });
+    // 접근 → 기수 들기(플레어) → 활주로(y 161) 접지 → 감속하며 오른쪽 기둥 뒤로 사라짐
+    // (앞쪽에 서 있는 비행기 꼬리 위로 지나가도록 하강은 뒤쪽에 몰아서)
+    this.tweens.add({ targets: plane, x: 360, duration: 2300, ease: 'Linear' });
+    this.tweens.add({ targets: plane, y: 161, duration: 2300, ease: 'Quad.In' });
+    this.tweens.add({ targets: plane, angle: -2, duration: 2300, ease: 'Sine.In' });
+    await this.wait(2300);
+    // 접지: 타이어 연기
+    for (let i = 0; i < 5; i++) {
+      const p = this.add.circle(plane.x - 8 + i * 2, 160, 1.5 + Math.random(), 0xffffff, 0.85).setDepth(-49).setMask(plane.mask!);
+      this.tweens.add({ targets: p, x: p.x - 10 - i * 3, y: 157, scale: 2.4, alpha: 0, duration: 600, onComplete: () => p.destroy() });
+    }
+    this.tweens.add({ targets: plane, angle: 0, duration: 300 });
+    this.tweens.add({ targets: plane, x: 600, duration: 3200, ease: 'Quad.Out' });
 
     // --- #02~#04 여행자들이 양쪽에서 뛰어들어와 환호 ---
     const xs = [70, 140, 210, 280, 360, 430, 500, 570];
@@ -80,13 +95,16 @@ export class Arrival extends BaseScene {
     sfx.levelup();
     sparkles(this, 320, 160, 30, undefined, 200);
     await this.wait(700);
-    const d = new DialogBox(this, 130, 306, 380, 40);
+    const d = new DialogBox(this, 110, 306, 420, 40);
+    d.bottom = H - 8;
     await d.say('한국 곳곳에서 미션을 해내고 명예 한국인이 되어 보세요!', 'Complete missions across Korea and become an honorary Korean.');
     await director.waitInput(this, 1600);
     await d.say('준비됐나요? 출발해요!', "Ready? Let's go!", 40);
-    // 카메라가 무리 쪽으로 살짝 줌인 (#04)
-    this.camZoom(1.15 * ZOOM, 1200, 'Sine.easeInOut');
     await director.waitInput(this, 1200);
+    // 대화창을 걷고 카메라가 무리 쪽으로 살짝 줌인 (#04) — 줌인하면 화면 아래 대화창이 잘리므로 먼저 숨김
+    this.tweens.add({ targets: d, alpha: 0, duration: 200 });
+    this.camZoom(1.15 * ZOOM, 1000, 'Sine.easeInOut');
+    await this.wait(1100);
     await this.goto('Title', {}, 'crt');
   }
 }

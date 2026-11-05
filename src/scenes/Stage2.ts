@@ -368,8 +368,8 @@ export class Cvs extends BaseScene {
     const bar = new Hotbar(this, ['bananamilk', 'cupramen2', 'samgak', 'cheese', 'icecream', 'sausage', 'cookies', 'tteokbokki'].map((id) => item(this, id)), 0);
 
     const recipes: { a: string; b: string; ko: string; en: string; who: Phaser.GameObjects.Sprite; pos: [number, number] }[] = [
-      { a: 'cupramen2', b: 'cheese', ko: '치즈 라면', en: 'Cheese ramyeon', who: hana, pos: [312, 150] },
-      { a: 'cookies', b: 'icecream', ko: '쿠키 아이스크림', en: 'Cookie ice cream', who: kofi, pos: [470, 150] },
+      { a: 'cupramen2', b: 'cheese', ko: '치즈 라면', en: 'Cheese ramyeon', who: hana, pos: [312, 134] },
+      { a: 'cookies', b: 'icecream', ko: '쿠키 아이스크림', en: 'Cookie ice cream', who: kofi, pos: [470, 134] },
     ];
     for (const r of recipes) {
       // SHOP 팝업
@@ -383,7 +383,7 @@ export class Cvs extends BaseScene {
         g.fillStyle(PAL.surf2); rrect(g, sx - 0.5, -20.5, 39, 35, 4.5);
       }
       const title = txt(this, -62, -48, r.ko, { px: TYPE.body + 0.5, weight: 800, color: '#ffffff' });
-      const titleEn = txt(this, -62, -35, `RECIPE  ·  ${r.en}`, { px: TYPE.cap, weight: 700, color: EN, spacing: 0.5 });
+      const titleEn = txt(this, -62, -35, r.en, { px: TYPE.cap, color: EN });
       const plus = txt(this, 0, -5, '+', { bold: true, color: '#ffffff' }).setOrigin(0.5);
       const qs = [-33, 33].map((x) => txt(this, x, -5, '?', { px: 18, weight: 900, color: '#5c6690' }).setOrigin(0.5));
       const btn = this.add.graphics();

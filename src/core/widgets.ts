@@ -88,11 +88,11 @@ export class Lives extends Phaser.GameObjects.Container {
     super(scene, W - 10, 52);
     this.n = n;
     const bg = scene.add.graphics();
-    const w = n * 14 + 10;
-    panel(bg, -w, -9, w, 18, PAL.surf, PAL.line, PAL.edge, true, 0.9, 9);
+    const w = n * 17 + 9;
+    panel(bg, -w, -10, w, 20, PAL.surf, PAL.line, PAL.edge, true, 0.92, 4);
     this.add(bg);
     for (let i = 0; i < n; i++) {
-      const g = scene.add.graphics({ x: -w + 12 + i * 14, y: 0 });
+      const g = scene.add.graphics({ x: -w + 12 + i * 17, y: 0 });
       Lives.draw(g, true);
       this.hearts.push(g);
       this.add(g);
@@ -111,7 +111,7 @@ export class Lives extends Phaser.GameObjects.Container {
       g.fillStyle(full ? (y === 1 && x === 1 ? 0xffd0da : PAL.acc) : 0x3a4166);
       g.fillRect(x - 3, y - 3, 1, 1);
     }));
-    g.setScale(1.5);
+    g.setScale(2);
   }
 
   lose() {

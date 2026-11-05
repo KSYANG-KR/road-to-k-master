@@ -5,8 +5,8 @@
 
 - 엔진: Phaser 3.90 + TypeScript + Vite (서버 불필요, 정적 파일만으로 동작)
 - 논리 좌표 640×360, 실제 렌더 2560×1440 (`?lo` 를 붙이면 1280×720) → 화면 크기에 맞춰 부드럽게 맞춤 (PC·태블릿·모바일 가로)
-- 디자인: 세계(배경·캐릭터)는 픽셀아트, 글자·UI는 Pretendard 한 가족 + 다크 글래스 패널. 모든 문구는 한글(굵게) 위, 영어(밝은 보조색) 아래 규칙
-- 그림 속 글자(공항 안내판·배너, 잠수교 표지판, 쇼핑몰 간판, 댄스 네온 간판, 엔딩 스크린, 포토 스티커)는 픽셀 폰트 Galmuri로 배경 도트와 같은 크기의 픽셀로 그려 넣음 (`src/art/pixeltext.ts`)
+- 디자인: 배경·캐릭터·글자·UI 모두 픽셀아트. 글꼴은 Galmuri 한 가족만 원래 픽셀 크기(10/12/15px)로 쓰고 화면에는 정수배로 확대. 패널·버튼·아이콘도 1px 격자에 맞춘 계단식 모서리 (`src/core/pixelgfx.ts`). 모든 문구는 한글 위, 영어 아래
+- 그림 속 글자(공항 안내판·배너, 잠수교 표지판, 쇼핑몰 간판, 댄스 네온 간판, 엔딩 스크린, 포토 스티커)는 배경 도트와 같은 크기의 픽셀로 그려 넣음 (`src/art/pixeltext.ts`). 비행기 꼬리에는 픽셀 태극기
 - 문구 톤: 친구끼리는 반말, 안내·팁·직원은 해요체, 미션 제목은 '~하기' / 영어는 명령문. '~' 없음, 느낌표는 한 번
 - 긴 문장은 균형 줄바꿈(줄 길이를 고르게, 한 단어만 떨어지지 않게)
 - 캐릭터 선택: 8명 중 한 명을 골라 그 캐릭터로 모든 미션·레벨업·엔딩을 체험 (테스트: `?hero=kofi`)
@@ -112,7 +112,7 @@ bash tools/export-video.sh captures/road-to-k-master.webm 2160   # 3840x2160
 ## 에셋 출처·라이선스
 - 배경·아이템 아이콘·비행기·음식 스프라이트: 이 프로젝트용으로 새로 생성(Higgsfield, GPT Image) (2K 해상도) 후 `tools/pixelsnap.py`, `tools/slice_sprites.py` 로 1280×720 픽셀 그리드에 맞춰 보정
 - 캐릭터: `src/art/characters.ts` 에서 코드로 그리는 파라메트릭 픽셀 스프라이트 (PPTX의 8인 라인업 디자인 참고)
-- 폰트: Pretendard (UI), Galmuri (그림 속 픽셀 글자) — 모두 SIL Open Font License 1.1 — `public/assets/fonts/OFL-*.md`
+- 폰트: Galmuri (SIL Open Font License 1.1) — `public/assets/fonts/OFL-Galmuri.md`
 - 엔진: Phaser (MIT)
 - 브랜드 로고 `public/assets/brand/imagine_your_korea.png`: 한국관광공사 제공 자료 (KTO 2027_1016.pptx)
 

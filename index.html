@@ -6,11 +6,6 @@
   <meta name="theme-color" content="#1b1640" />
   <title>ROAD TO K-MASTER</title>
   <style>
-    @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-Medium.woff2') format('woff2'); font-weight: 500; font-display: block; }
-    @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: block; }
-    @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-Bold.woff2') format('woff2'); font-weight: 700; font-display: block; }
-    @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-ExtraBold.woff2') format('woff2'); font-weight: 800; font-display: block; }
-    @font-face { font-family: 'Pretendard'; src: url('./assets/fonts/Pretendard-Black.woff2') format('woff2'); font-weight: 900; font-display: block; }
     /* 게임 속 간판·배너 같은 '그림 속 글자' 전용 픽셀 폰트 */
     @font-face { font-family: 'Galmuri11B'; src: url('./assets/fonts/Galmuri11-Bold.woff2') format('woff2'); font-display: block; }
     @font-face { font-family: 'Galmuri11'; src: url('./assets/fonts/Galmuri11.woff2') format('woff2'); font-display: block; }
@@ -23,7 +18,7 @@
     /* 세로 화면: 막지 않고, 게임 위 빈 공간에 '가로로 돌리면 더 크게' 안내만 (탭하면 닫힘) */
     #rotate { display: none; position: fixed; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 10;
       align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; background: rgba(21, 26, 51, 0.92); border: 1px solid #3c4674;
-      color: #fff; font-family: 'Pretendard', system-ui, sans-serif; font-size: 13px; line-height: 1.35; white-space: nowrap; cursor: pointer; }
+      color: #fff; font-family: 'Galmuri11', monospace; font-size: 13px; line-height: 1.35; white-space: nowrap; cursor: pointer; }
     #rotate .icon { font-size: 20px; animation: rot 1.6s infinite; }
     #rotate small { color: #d4daf7; font-weight: 500; }
     @keyframes rot { 0%, 30% { transform: rotate(0) } 60%, 100% { transform: rotate(90deg) } }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import './core/pixelgfx';
 import { W, H, ZOOM } from './core/ui';
 import { Boot } from './scenes/Boot';
 import { FxScene } from './core/fx';
@@ -17,7 +18,6 @@ window.addEventListener('unhandledrejection', (e) => console.error('[scene error
 
 async function start() {
   await Promise.all([
-    ...[500, 600, 700, 800, 900].map((w) => document.fonts.load(`${w} 12px Pretendard`, '한글AB')),
     ...['Galmuri11B', 'Galmuri11', 'Galmuri9', 'Galmuri7', 'Galmuri14'].map((f) => document.fonts.load(`12px ${f}`, '한글AB')),
   ]);
   const q = new URLSearchParams(location.search);

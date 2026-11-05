@@ -66,7 +66,7 @@ export class Ending extends BaseScene {
     await this.wait(3200);
 
     // (#26~#29) 영상 구간
-    const d = new DialogBox(this, SCR.x - 20, SCR.y + SCR.h + 10, SCR.w + 40, 38);
+    const d = new DialogBox(this, SCR.x - 40, SCR.y + SCR.h + 10, SCR.w + 80, 38);
     d.setDepth(990).setAlpha(0);
     const clips = await loadClipList();
     screen.removeAll(true);

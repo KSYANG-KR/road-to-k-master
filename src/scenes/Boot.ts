@@ -29,9 +29,9 @@ export class Boot extends Phaser.Scene {
   preload() {
     setupCamera(this);
     this.cameras.main.setBackgroundColor('#0b0f24');
-    txt(this, W / 2, H / 2 - 62, 'ROAD TO', { bold: true, color: '#ffffff', spacing: 6 }).setOrigin(0.5, 0);
+    txt(this, W / 2, H / 2 - 74, 'ROAD TO', { bold: true, color: '#ffffff', spacing: 6 }).setOrigin(0.5, 0);
     const lines = this.add.graphics();
-    lines.fillStyle(PAL.acc); lines.fillRect(W / 2 - 78, H / 2 - 56, 22, 1); lines.fillRect(W / 2 + 56, H / 2 - 56, 22, 1);
+    lines.fillStyle(PAL.acc); lines.fillRect(W / 2 - 80, H / 2 - 67, 22, 1); lines.fillRect(W / 2 + 58, H / 2 - 67, 22, 1);
     bigText(this, W / 2, H / 2 - 26, 'K-MASTER', 3, '#ffffff', '#151a33', '#c94466');
     const track = this.add.rectangle(W / 2 - 80, H / 2 + 14, 160, 2, PAL.line).setOrigin(0, 0.5);
     const bar = this.add.rectangle(W / 2 - 80, H / 2 + 14, 0, 2, PAL.acc).setOrigin(0, 0.5);
@@ -75,6 +75,8 @@ export class Boot extends Phaser.Scene {
       const start = () => { audioCtx(); go(); };
       this.input.once('pointerdown', start);
       this.input.keyboard?.once('keydown', start);
+      // 개발용 점검: ?tapstart 면 1.5초 뒤 자동으로 시작 (사람 플레이 화면 그대로 확인)
+      if (q.has('tapstart') && import.meta.env.DEV) this.time.delayedCall(1500, start);
     }
   }
 }

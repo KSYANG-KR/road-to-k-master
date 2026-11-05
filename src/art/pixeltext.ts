@@ -12,10 +12,10 @@ const FONTS: Record<PixFont, [string, number]> = {
 export interface PixLine { t: string; font?: PixFont; color?: string; spacing?: number; vertical?: boolean; vgap?: number; bold?: boolean }
 export interface PixOpts { gap?: number; shadow?: string; outline?: string; depth?: number; align?: 'center' | 'left' }
 
-interface Mask { w: number; h: number; m: Uint8Array }
+export interface Mask { w: number; h: number; m: Uint8Array }
 
 // 한 줄(또는 세로쓰기 한 열)을 0/1 마스크로
-function lineMask(l: PixLine): Mask {
+export function lineMask(l: PixLine): Mask {
   const [fam, size] = FONTS[l.font ?? 'g11'];
   const sp = l.spacing ?? 0;
   const chars = [...l.t];

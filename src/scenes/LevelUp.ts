@@ -31,10 +31,11 @@ function burstBg(scene: Phaser.Scene, glow: number, _bottom: number, cy = 214) {
 
 function ribbon(scene: Phaser.Scene, y: number, label: string, scale = 3) {
   // 제목 양옆의 얇은 코랄 라인
-  const g = scene.add.graphics({ x: W / 2, y });
-  const half = label.length * 3.6 * scale + 10;
-  g.fillStyle(PAL.acc); g.fillRect(-half - 40, 0, 32, 2); g.fillRect(half + 8, 0, 32, 2);
   const t = bigText(scene, W / 2, y, label, scale, '#ffd166', '#151a33', '#8a5a10');
+  // 실제 글자 폭에 맞춰 양옆 라인 배치 (글자와 10px 간격)
+  const half = Math.round((t.textWidth * Math.round(scale)) / 2) + 10;
+  const g = scene.add.graphics({ x: W / 2, y });
+  g.fillStyle(PAL.acc); g.fillRect(-half - 30, 0, 30, 2); g.fillRect(half, 0, 30, 2);
   return [g, t];
 }
 

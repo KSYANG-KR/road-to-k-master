@@ -1,7 +1,7 @@
 // 캐릭터 선택: 8명 중 한 명을 골라 그 캐릭터로 여행한다
 import Phaser from 'phaser';
 import { BaseScene } from '../core/BaseScene';
-import { button, panel, rrect, tag, txt, balance, PAL, TXT, SUB, ACC, EN, TYPE, W, H } from '../core/ui';
+import { bigText, button, panel, rrect, tag, txt, balance, PAL, TXT, SUB, ACC, EN, TYPE, W, H } from '../core/ui';
 import { playMusic, sfx } from '../core/audio';
 import { director } from '../core/director';
 import { CAST, LINEUP, PROFILE, setHero } from '../art/cast';
@@ -39,7 +39,7 @@ export class CharSelect extends BaseScene {
     const spot = this.add.graphics({ x: PX, y: 66 }).setDepth(-50);
     spot.fillStyle(0xffffff, 0.06); spot.fillPoints([{ x: -20, y: 0 }, { x: 20, y: 0 }, { x: 74, y: 262 }, { x: -74, y: 262 }], true);
     spot.fillStyle(0xffffff, 0.1); spot.fillEllipse(0, 262, 150, 20);
-    const nameT = txt(this, PX, 76, '', { px: 22, weight: 900, color: TXT, spacing: 1 }).setOrigin(0.5, 0);
+    const nameT = bigText(this, PX, 86, ' ', 2, '#ffffff', '#151a33', '#c94466');
     let roleTag: Phaser.GameObjects.Container | undefined;
     let preview: Phaser.GameObjects.Sprite | undefined;
 
@@ -92,7 +92,7 @@ export class CharSelect extends BaseScene {
       nameT.setText(CAST[id].name);
       roleTag?.destroy();
       const p = PROFILE[id];
-      roleTag = tag(this, PX, 108, `${p.role[0]}  ·  ${p.role[1]}`, { bg: PAL.acc, bold: true, depth: 5 });
+      roleTag = tag(this, PX, 112, `${p.role[0]}  ·  ${p.role[1]}`, { bg: PAL.acc, bold: true, depth: 5 });
       balance(bioKo, p.bio[0], infoW - 24);
       balance(bioEn, p.bio[1], infoW - 24);
       preview?.destroy();

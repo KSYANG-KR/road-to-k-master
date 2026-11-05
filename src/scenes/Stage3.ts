@@ -90,7 +90,7 @@ export class Hansik extends BaseScene {
       this.tweens.killTweensOf(cur);
       cur.x = 12 + sel * 80;
       this.tweens.add({ targets: cur, x: cur.x + 2, yoyo: true, repeat: -1, duration: 260 });
-      optT.forEach((t, k) => t.setColor(k === sel ? TXT : SUB).setFontStyle(k === sel ? '700' : '500'));
+      optT.forEach((t, k) => t.setColor(k === sel ? TXT : SUB).setFontFamily(k === sel ? 'Galmuri11B' : 'Galmuri11'));
       optE.forEach((t, k) => t.setColor(k === sel ? ACC : SUB));
       if (sound) sfx.move();
     };
@@ -456,7 +456,7 @@ export class Dance extends BaseScene {
     const comboT = txt(this, 320, 196, '', { px: 14, weight: 900, color: '#ffffff', stroke: '#1a1430', strokeThickness: 3, align: 'center' }).setOrigin(0.5).setDepth(70);
     this.addHud();
     await this.reveal();
-    const box = DialogBox.mission(this, '케이팝 댄스 배우고 아이돌 되기', 'Learn K-pop dance and shine like an idol');
+    const box = DialogBox.mission(this, '아이돌처럼 춤추기', 'Dance like a K-pop idol');
     await this.wait(800);
 
     // 채보: 댄스 트랙의 멜로디 음에서 생성 (8분음표 위치만)

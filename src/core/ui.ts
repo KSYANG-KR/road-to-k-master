@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import { sfx } from './audio';
 import { state, LEVELS, MAX_XP } from './state';
 import { director } from './director';
+import { lineMask } from '../art/pixeltext';
 
 export const W = 640;
 export const H = 360;
@@ -58,30 +59,42 @@ export const COL = {
   xpGreen: 0x58e0b0,
 };
 
-// 타이포그래피: 세계(배경·캐릭터)는 픽셀아트, 글자·UI는 Pretendard 한 가족으로 통일 (한글·영문 같은 설계)
-export const FONT = 'Pretendard';
-export const FONT_B = 'Pretendard';
-export const FONT_S = 'Pretendard';
+// 타이포그래피: 배경·캐릭터와 같은 픽셀아트 글꼴 Galmuri 한 가족만 사용.
+// 글꼴이 설계된 원래 픽셀 크기(10 / 12 / 15px)로만 그리고, 화면 확대는 정수배(×ZOOM)로 해 모든 글자 픽셀이 같은 크기가 되게 한다.
+export const FONT = 'Galmuri11';
+export const FONT_B = 'Galmuri11B';
+export const FONT_S = 'Galmuri9';
+export const FONT_L = 'Galmuri14';
 
-// 글자 크기 단계 (논리 px). 화면에는 ×ZOOM 해상도로 그린다
+// 글자 크기 단계 (예전 값 호환용 — 실제로는 아래 pixFont 에서 10/12/15px 로 맞춘다)
 export const TYPE = { cap: 7, small: 8, body: 9.5, h3: 11, h2: 13, h1: 16 };
 
 type TxtOpts = Partial<Phaser.Types.GameObjects.Text.TextStyle> & { size?: number; px?: number; bold?: boolean; weight?: number; spacing?: number };
 
-// size 는 예전 픽셀 폰트 기준(10/12/15) → 같은 시각적 무게의 Pretendard 크기로 변환. px 로 직접 지정도 가능
+// 요청 크기 → [글꼴, 픽셀 크기, 배율]
+function pixFont(fs: number, bold: boolean): [string, number, number] {
+  if (fs < 8.6) return [FONT_S, 10, 1];
+  if (fs < 11.6) return [bold ? FONT_B : FONT, 12, 1];
+  if (fs <= 18) return [FONT_L, 15, 1];
+  return [FONT_B, 12, 2];
+}
+
 export function txt(scene: Phaser.Scene, x: number, y: number, s: string, opts: TxtOpts = {}) {
-  const { size = 12, px, bold = false, weight, spacing, ...rest } = opts;
-  const fs = px ?? Math.round(size * 0.8 * 2) / 2;
+  const { size = 12, px, bold = false, weight, spacing, lineSpacing, strokeThickness, ...rest } = opts;
+  const fs = px ?? size * 0.8;
+  const [fam, fpx, k] = pixFont(fs, bold || (weight ?? 0) >= 700);
   const t = scene.add.text(Math.round(x), Math.round(y), s, {
-    fontFamily: FONT,
-    fontSize: `${fs}px`,
-    fontStyle: String(weight ?? (bold ? 700 : 500)),
+    fontFamily: fam,
+    fontSize: `${fpx}px`,
     color: COL.white,
+    lineSpacing: Math.round(lineSpacing ?? 2),
+    ...(strokeThickness ? { strokeThickness: Math.max(2, Math.round(strokeThickness / 2) * 2) } : {}),
     ...rest,
   });
-  if (spacing) t.setLetterSpacing(spacing);
-  // 캔버스 픽셀과 1:1 해상도로 그려 화면 어디서든 선명하게
+  if (spacing) t.setLetterSpacing(Math.max(1, Math.round(spacing)));
+  // 논리 해상도 그대로 그린 뒤(아래 패치에서 알파를 0/255로) 카메라가 정수배 확대
   t.setResolution(ZOOM);
+  if (k !== 1) t.setScale(k);
   return t;
 }
 
@@ -103,13 +116,22 @@ export function balance(t: Phaser.GameObjects.Text, s: string, maxW: number) {
   return t;
 }
 
-// pixelArt 모드는 모든 텍스처를 NEAREST로 거르므로, 글자 텍스처만 부드러운 LINEAR로 바꿔 획이 들쭉날쭉하지 않게 한다
+// 브라우저가 글자 가장자리를 반투명하게(안티앨리어싱) 그리는 것을 알파 0/255로 잘라 진짜 픽셀 글자로 만든다
 {
   const proto = Phaser.GameObjects.Text.prototype as unknown as { updateText: () => unknown };
-  const orig = proto.updateText;
+  const origUpdate = proto.updateText;
   proto.updateText = function (this: Phaser.GameObjects.Text) {
-    const r = orig.call(this);
-    if (this.texture && this.canvas?.width) this.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const r = origUpdate.call(this);
+    const cv = this.canvas;
+    if (!String(this.style.fontFamily).startsWith('Galmuri') || !cv?.width || !cv.height) return r;
+    const ctx = this.context;
+    const img = ctx.getImageData(0, 0, cv.width, cv.height);
+    const d = img.data;
+    for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 128 ? 255 : 0;
+    ctx.putImageData(img, 0, 0);
+    const self = this as unknown as { renderer?: { gl?: unknown; canvasToTexture: (c: HTMLCanvasElement, t: unknown, f: boolean) => unknown }; frame: { source: { glTexture: unknown } } };
+    if (self.renderer?.gl) self.frame.source.glTexture = self.renderer.canvasToTexture(cv, self.frame.source.glTexture, true);
+    this.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
     return r;
   };
 }
@@ -121,47 +143,32 @@ export const mixc = (a: number, b: number, t: number) => Phaser.Display.Color.Ge
   Math.round((a & 255) * (1 - t) + (b & 255) * t));
 const hex = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
 
-// 큰 제목 글자 텍스처: 단색 면 + 얇은 외곽선 + 한 방향 하드 섀도 (과한 그라데이션 없이 깔끔하게)
-// F = 텍스처 픽셀 / 화면 논리 px × 글자 배율. Pretendard Black 으로 면 + 얇은 외곽선 + 한 방향 그림자
-function bigTexture(scene: Phaser.Scene, s: string, F: number, color: string, stroke: string, shadowCol?: string) {
-  const key = `big3|${s}|${F}|${color}|${stroke}|${shadowCol ?? ''}`;
+// 큰 제목 글자: Galmuri11B 를 원래 픽셀 크기로 마스크 → 위 밝은 띠·아래 어두운 띠 + 1px 외곽선(8방향) + 아래 그림자
+// 화면에는 정수배(scale)로 키워 굵은 도트 로고가 된다
+function bigTexture(scene: Phaser.Scene, s: string, color: string, stroke: string, shadowCol?: string) {
+  const key = `big4|${s}|${color}|${stroke}|${shadowCol ?? ''}`;
   if (scene.textures.exists(key)) return key;
-  const fpx = 13 * F;
-  const font = `900 ${fpx}px ${FONT}`;
-  const gc = document.createElement('canvas');
-  const g0 = gc.getContext('2d')!;
-  g0.font = font;
-  const track = fpx * 0.02;
-  (g0 as unknown as { letterSpacing: string }).letterSpacing = `${track}px`;
-  const tw = Math.ceil(g0.measureText(s).width) || 1;
-  const O = Math.max(2, Math.round(fpx * 0.075));
-  const D = Math.max(2, Math.round(fpx * 0.09));
-  const pad = O + 4;
-  const w = tw + pad * 2, h = Math.ceil(fpx * 1.18) + pad * 2 + D;
-  gc.width = w; gc.height = h;
-  const g = gc.getContext('2d')!;
-  g.font = font;
-  (g as unknown as { letterSpacing: string }).letterSpacing = `${track}px`;
-  g.textBaseline = 'alphabetic';
-  g.lineJoin = 'round';
-  const bx = pad, by = pad + Math.round(fpx * 0.9);
+  const mk = lineMask({ t: s, font: 'g11b', spacing: 1 });
+  const pad = 1, D = 1;
+  const w = mk.w + pad * 2, h = mk.h + pad * 2 + D;
+  const at = (x: number, y: number) => x >= 0 && y >= 0 && x < mk.w && y < mk.h && mk.m[y * mk.w + x] === 1;
   const base = css(color), st = css(stroke);
-  const shadowC = shadowCol ? css(shadowCol) : mixc(st, 0x000000, 0.45);
-  // 그림자 (외곽선 두께까지 포함해 아래로)
-  g.fillStyle = hex(shadowC); g.strokeStyle = hex(shadowC); g.lineWidth = O * 2;
-  g.strokeText(s, bx, by + D); g.fillText(s, bx, by + D);
-  // 외곽선
-  g.strokeStyle = hex(st); g.lineWidth = O * 2;
-  g.strokeText(s, bx, by);
-  // 면: 위는 그대로, 아래쪽만 아주 살짝 어둡게
-  const grad = g.createLinearGradient(0, by - fpx * 0.75, 0, by);
-  grad.addColorStop(0, hex(mixc(base, 0xffffff, 0.12)));
-  grad.addColorStop(0.55, hex(base));
-  grad.addColorStop(1, hex(mixc(base, 0x000000, 0.1)));
-  g.fillStyle = grad;
-  g.fillText(s, bx, by);
-  const tex = scene.textures.addCanvas(key, gc)!;
-  tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  const hi = mixc(base, 0xffffff, 0.35), lo = mixc(base, 0x000000, 0.14);
+  const sh = shadowCol ? css(shadowCol) : mixc(st, 0x000000, 0.4);
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d')!;
+  const img = g.createImageData(w, h);
+  const put = (x: number, y: number, c: number) => { const i = (y * w + x) * 4; img.data[i] = (c >> 16) & 255; img.data[i + 1] = (c >> 8) & 255; img.data[i + 2] = c & 255; img.data[i + 3] = 255; };
+  const near = (x: number, y: number) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (at(x + dx, y + dy)) return true; return false; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const mx = x - pad, my = y - pad;
+    if (at(mx, my)) put(x, y, my < mk.h * 0.34 ? hi : my >= mk.h * 0.72 ? lo : base);
+    else if (near(mx, my)) put(x, y, st);
+    else if (near(mx, my - D)) put(x, y, sh);
+  }
+  g.putImageData(img, 0, 0);
+  scene.textures.addCanvas(key, cv);
   return key;
 }
 
@@ -176,22 +183,24 @@ export class BigText extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, x: number, y: number, s: string, scale: number, color: string, stroke: string, shadowCol?: string) {
     super(scene, Math.round(x), Math.round(y));
-    this.F = Math.max(2, Math.round(scale * ZOOM));
+    this.F = 1;
     this.str = s; this.col = color; this.stroke = stroke; this.shadowCol = shadowCol;
-    this.img = scene.add.image(0, 0, '__WHITE').setScale(1 / this.F);
+    this.img = scene.add.image(0, 0, '__WHITE');
     this.add(this.img);
-    this.setScale(scale);
+    this.setScale(Math.max(1, Math.round(scale)));
     this.redraw();
     scene.add.existing(this);
   }
 
   redraw() {
     if (!this.str) { this.img.setVisible(false); return; }
-    this.img.setVisible(true).setTexture(bigTexture(this.scene, this.str, this.F, this.col, this.stroke, this.shadowCol));
+    this.img.setVisible(true).setTexture(bigTexture(this.scene, this.str, this.col, this.stroke, this.shadowCol));
+    // 정수 픽셀 중심 (홀수 크기에서 반 픽셀 어긋남 방지)
+    this.img.setOrigin(Math.floor(this.img.width / 2) / this.img.width, Math.floor(this.img.height / 2) / this.img.height);
   }
 
   get text() { return this.str; }
-  get textWidth() { return this.img.width / this.F; }
+  get textWidth() { return this.img.width; }
   setText(s: string) { this.str = s; this.redraw(); return this; }
   setColor(c: string) { this.col = c; this.redraw(); return this; }
   setStroke(c: string, _t?: number) { this.stroke = c; this.redraw(); return this; }
@@ -221,29 +230,29 @@ function rstroke(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number
 }
 const chamfer = (g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, c = 3) => rrect(g, x, y, w, h, c + 1);
 
-// 다크 글래스 패널: 부드러운 그림자 + 반투명 면 + 0.5px 헤어라인 + 위쪽 하이라이트
-export function panel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, fill: number = PAL.surf, border: number = PAL.line, _dark: number = PAL.edge, shadow = true, alpha = 0.9, r = 5) {
-  if (shadow) {
-    g.fillStyle(0x000000, 0.14); rrect(g, x - 1, y + 1, w + 2, h + 3, r + 1);
-    g.fillStyle(0x000000, 0.22); rrect(g, x, y + 1.5, w, h, r);
-  }
-  g.fillStyle(fill, alpha); rrect(g, x, y, w, h, r);
-  g.lineStyle(0.75, border, 1); rstroke(g, x + 0.375, y + 0.375, w - 0.75, h - 0.75, r);
-  g.lineStyle(0.5, 0xffffff, 0.1); g.lineBetween(x + r, y + 1.25, x + w - r, y + 1.25);
+// 다크 패널 (픽셀): 2px 아래 그림자 + 반투명 면 + 1px 테두리 + 안쪽 위 1px 하이라이트
+export function panel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, fill: number = PAL.surf, border: number = PAL.line, _dark: number = PAL.edge, shadow = true, alpha = 0.92, r = 4) {
+  x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+  if (shadow) { g.fillStyle(0x000000, 0.3); rrect(g, x, y + 2, w, h, r); }
+  g.fillStyle(fill, alpha); rrect(g, x + 1, y + 1, w - 2, h - 2, r - 1);
+  g.lineStyle(1, border, 1); rstroke(g, x, y, w, h, r);
+  g.fillStyle(0xffffff, 0.08); g.fillRect(x + 2 + (r > 3 ? 1 : 0), y + 1, w - 4 - (r > 3 ? 2 : 0), 1);
 }
 
-// 밝은 말풍선용 패널
-export function lightPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, r = 5) {
-  g.fillStyle(0x000000, 0.2); rrect(g, x, y + 1.5, w, h, r);
-  g.fillStyle(0xffffff, 1); rrect(g, x, y, w, h, r);
-  g.lineStyle(0.75, 0x1b2140, 0.35); rstroke(g, x + 0.375, y + 0.375, w - 0.75, h - 0.75, r);
+// 밝은 말풍선 패널 (픽셀)
+export function lightPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, r = 4) {
+  x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+  g.fillStyle(0x000000, 0.25); rrect(g, x, y + 2, w, h, r);
+  g.fillStyle(0xffffff, 1); rrect(g, x + 1, y + 1, w - 2, h - 2, r - 1);
+  g.lineStyle(1, 0x1b2140, 1); rstroke(g, x, y, w, h, r);
+  g.fillStyle(0xdfe3f2, 1); g.fillRect(x + 2, y + h - 2, w - 4, 1);
 }
 
 // 작은 라벨. bg를 주면 단색, 없으면 다크 글래스
 export function tag(scene: Phaser.Scene, x: number, y: number, s: string, o: { bg?: number; fg?: string; size?: number; bold?: boolean; ox?: number; oy?: number; depth?: number; pop?: boolean; clamp?: boolean } = {}) {
   const c = scene.add.container(Math.round(x), Math.round(y));
-  const t = txt(scene, 0, 0, s, { size: o.size ?? 10, weight: o.bold ? 700 : 600, color: o.fg ?? '#ffffff', align: 'center', lineSpacing: 1 });
-  const w = Math.ceil(t.width) + 12, h = Math.ceil(t.height) + 5;
+  const t = txt(scene, 0, 0, s, { size: o.size ?? 10, bold: o.bold, color: o.fg ?? '#ffffff', align: 'center', lineSpacing: 2 });
+  const w = Math.ceil(t.displayWidth) + 12, h = Math.ceil(t.displayHeight) + 6;
   let left = -Math.round(w * (o.ox ?? 0.5));
   const top = -Math.round(h * (o.oy ?? 0.5));
   // 화면 가장자리를 넘지 않게 안쪽으로 밀어 넣음
@@ -254,7 +263,7 @@ export function tag(scene: Phaser.Scene, x: number, y: number, s: string, o: { b
   const g = scene.add.graphics();
   if (o.bg === undefined || o.bg === PAL.ink || o.bg === PAL.surf) panel(g, left, top, w, h, PAL.surf, PAL.line, PAL.edge, true, 0.9, 4);
   else panel(g, left, top, w, h, o.bg, mixc(o.bg, 0xffffff, 0.35), PAL.edge, true, 1, 4);
-  t.setPosition(left + 6, top + (h - t.height) / 2);
+  t.setPosition(left + 6, top + Math.round((h - t.height) / 2));
   c.add([g, t]);
   c.setSize(w, h);
   c.setDepth(o.depth ?? 960);
@@ -270,18 +279,21 @@ export function tag(scene: Phaser.Scene, x: number, y: number, s: string, o: { b
 export function button(scene: Phaser.Scene, x: number, y: number, label: string, o: { w?: number; h?: number; bg?: number; size?: number; sub?: string } = {}) {
   const w = o.w ?? 96, h = o.h ?? 24, bg = o.bg ?? PAL.acc;
   const c = scene.add.container(Math.round(x), Math.round(y));
-  const r = Math.min(6, h / 2);
+  const r = 4;
   const base = scene.add.graphics();
-  base.fillStyle(0x000000, 0.25); rrect(base, -w / 2, -h / 2 + 3, w, h, r);
-  base.fillStyle(mixc(bg, 0x000000, 0.38)); rrect(base, -w / 2, -h / 2 + 1.5, w, h, r);
+  const L = -Math.round(w / 2), T = -Math.round(h / 2);
+  base.fillStyle(0x000000, 0.3); rrect(base, L, T + 3, w, h, r);
+  base.fillStyle(PAL.edge); rrect(base, L, T + 2, w, h, r);
+  base.fillStyle(mixc(bg, 0x000000, 0.4)); rrect(base, L + 1, T + 2, w - 2, h - 1, r - 1);
   const face = scene.add.graphics();
-  face.fillStyle(bg); rrect(face, -w / 2, -h / 2, w, h, r);
-  face.lineStyle(0.5, 0xffffff, 0.35); face.lineBetween(-w / 2 + r, -h / 2 + 0.75, w / 2 - r, -h / 2 + 0.75);
-  const ly = o.sub ? -Math.round(h * 0.16) : 0, sy = Math.round(h * 0.24);
-  const t = txt(scene, 0, ly, label, { weight: 800, size: o.size ?? 12, color: '#ffffff', spacing: 1.5 }).setOrigin(0.5);
+  face.fillStyle(PAL.edge); rrect(face, L, T, w, h, r);
+  face.fillStyle(bg); rrect(face, L + 1, T + 1, w - 2, h - 2, r - 1);
+  face.fillStyle(0xffffff, 0.35); face.fillRect(L + 3, T + 1, w - 6, 1);
+  const ly = o.sub ? -Math.round(h * 0.18) : 0, sy = Math.round(h * 0.22);
+  const t = txt(scene, 0, ly, label, { bold: true, size: o.size ?? 12, color: '#ffffff', spacing: 1, stroke: '#7a2440', strokeThickness: 2 }).setOrigin(0.5);
   const parts: Phaser.GameObjects.GameObject[] = [base, face, t];
   let st: Phaser.GameObjects.Text | undefined;
-  if (o.sub) { st = txt(scene, 0, sy, o.sub, { px: TYPE.small, weight: 600, color: '#ffe9ee' }).setOrigin(0.5); parts.push(st); }
+  if (o.sub) { st = txt(scene, 0, sy, o.sub, { px: TYPE.small, color: '#fff0f3' }).setOrigin(0.5); parts.push(st); }
   c.add(parts);
   c.setSize(w, h + 2);
   c.setInteractive({ useHandCursor: true });
@@ -289,8 +301,6 @@ export function button(scene: Phaser.Scene, x: number, y: number, label: string,
   c.on('pointerdown', () => press(1));
   c.on('pointerup', () => press(0));
   c.on('pointerout', () => press(0));
-  c.on('pointerover', () => scene.tweens.add({ targets: c, scale: 1.04, duration: 100 }));
-  c.on('pointerout', () => scene.tweens.add({ targets: c, scale: 1, duration: 100 }));
   c.setData('label', t);
   return c;
 }
@@ -364,8 +374,10 @@ export class DialogBox extends Phaser.GameObjects.Container {
   }
 
   // 글 길이에 맞춰 창 높이를 다시 그림
+  bottom?: number;
   resize(h: number) {
     this.bh = h;
+    if (this.bottom !== undefined) this.y = this.bottom - h;
     this.g.clear();
     panel(this.g, 0, 0, this.bw, h);
     // 왼쪽 포인트 줄
@@ -687,8 +699,8 @@ export async function missionClear(scene: Phaser.Scene, got = 3) {
     return s;
   });
   const grade = got >= 3 ? ['PERFECT', '완벽해요!'] : got === 2 ? ['GREAT', '잘했어요!'] : ['GOOD', '좋아요!'];
-  const g1 = txt(scene, 0, 12, grade[0], { px: 20, weight: 900, color: got >= 3 ? GOLD : TXT, spacing: 2 }).setOrigin(0.5, 0);
-  const g2 = txt(scene, 0, 36, grade[1], { px: TYPE.body, weight: 600, color: EN }).setOrigin(0.5, 0);
+  const g1 = bigText(scene, 0, 22, grade[0], 2, got >= 3 ? GOLD : TXT, '#151a33', got >= 3 ? '#8a5a10' : '#3c4674');
+  const g2 = txt(scene, 0, 38, grade[1], { px: TYPE.body, color: EN }).setOrigin(0.5, 0);
   c.add([label, ...stars, g1, g2]);
   c.setAlpha(0);
   scene.tweens.add({ targets: c, alpha: 1, duration: 200 });
