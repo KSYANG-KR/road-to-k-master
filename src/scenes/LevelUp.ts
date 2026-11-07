@@ -68,8 +68,9 @@ async function spinTransform(scene: BaseScene, s: Phaser.GameObjects.Sprite, new
   sparkles(scene, s.x, s.y - scale * 22, 30, undefined, 80);
   sfx.sparkle();
   scene.redress(s, CAST.hana, newOutfit, 'cheer');
-  s.setScale(scale * CHAR_TEX_SCALE);
-  scene.tweens.add({ targets: s, scale: scale * 1.1 * CHAR_TEX_SCALE, yoyo: true, duration: 150 });
+  const tk = (s.getData('tk') as number) ?? 1;
+  s.setScale((scale * CHAR_TEX_SCALE) / tk);
+  scene.tweens.add({ targets: s, scale: (scale * 1.1 * CHAR_TEX_SCALE) / tk, yoyo: true, duration: 150 });
 }
 
 export class LevelUp extends BaseScene {
@@ -169,7 +170,7 @@ export class Finale extends BaseScene {
     await this.wait(1800);
 
     // (#23-24) XP 화면이 우측 상단으로 축소되며 MAX LEVEL 화면으로 원씬 전환
-    this.tweens.add({ targets: xpBox, x: W - 70, y: 26, scale: 0.32, duration: 700, ease: 'Cubic.InOut' });
+    this.tweens.add({ targets: xpBox, x: W - 86, y: 24, scale: 0.48, duration: 700, ease: 'Cubic.InOut' });
     this.tweens.add({ targets: big, alpha: 0, scale: 2, duration: 400 });
     await this.wait(500);
     const [rg, rt] = ribbon(this, 54, 'MAX LEVEL', 3);
@@ -182,24 +183,24 @@ export class Finale extends BaseScene {
     crown.fillStyle(0x5aaeff); crown.fillRect(-10, 1, 3, 3); crown.fillRect(7, 1, 3, 3);
     crown.fillStyle(0xffffff); crown.fillRect(-1, -6, 2, 2);
     [rg, rt, crown].forEach((o) => this.tweens.add({ targets: o, y: { from: -60, to: (o as { y: number }).y }, duration: 500, ease: 'Bounce.Out' }));
-    const left = this.char('hana', 200, 320, { scale: 3, outfit: OUTFITS.hanaLv3, key: 'fin_left' });
+    const left = this.char('hana', 200, 298, { scale: 3, outfit: OUTFITS.hanaLv3, key: 'fin_left' });
     this.play(left, 'dance');
     lvChip(this, 200, 116, 3);
-    bigText(this, 200, 330, 'K-MASTER', 2, '#ffffff', '#151a33');
+    bigText(this, 200, 322, 'K-MASTER', 2, '#ffffff', '#151a33');
     const arrow = this.add.graphics({ x: 320, y: 230 });
     arrow.fillStyle(PAL.acc); arrow.fillTriangle(-8, -11, -8, 11, 10, 0);
     this.tweens.add({ targets: arrow, x: 330, yoyo: true, repeat: -1, duration: 300 });
     const c = card(this, 450, 228, 0xd63be0).setScale(1.3);
-    const right = this.char('hana', 450, 300, { scale: 3, outfit: OUTFITS.hanaLv3, key: 'fin_right' });
+    const right = this.char('hana', 450, 292, { scale: 3, outfit: OUTFITS.hanaLv3, key: 'fin_right' });
     await this.wait(900);
     await spinTransform(this, right, OUTFITS.hanaMax, 3);
     right.setFrame('point');
     right.anims.stop();
     state.maxed = true;
-    const hk = bigText(this, 450, 330, 'HONORARY KOREAN', 2, '#ffd166', '#151a33', '#8a5a10');
+    const hk = bigText(this, 450, 320, 'HONORARY KOREAN', 2, '#ffd166', '#151a33', '#8a5a10');
     hk.setScale(0);
     this.tweens.add({ targets: hk, scale: 2, duration: 350, ease: 'Back.Out' });
-    const hkKo = tag(this, 450, 350, '명예 한국인', { bg: PAL.acc, bold: true, depth: 10, pop: true });
+    const hkKo = tag(this, 450, 344, '명예 한국인', { bg: PAL.acc, bold: true, depth: 10, pop: true });
     void hkKo;
     this.tweens.add({ targets: c, angle: { from: -3, to: 3 }, yoyo: true, repeat: -1, duration: 500 });
     confetti(this, 120);

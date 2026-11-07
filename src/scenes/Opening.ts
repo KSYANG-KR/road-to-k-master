@@ -41,13 +41,6 @@ export class Arrival extends BaseScene {
 
   async create() {
     this.bg('airport');
-    // 창밖으로 착륙하는 비행기: 유리창 안쪽(창살 뒤)에만 보이도록 창 유리 영역으로 마스크
-    // 창살 x 134~137 / 225~227 / 320~322 / 412~415 / 503~506, 유리 y 74~197 (배경 픽셀에서 측정)
-    const glass = this.make.graphics({}, false);
-    glass.fillStyle(0xffffff);
-    [[96, 134], [137, 225], [228, 320], [323, 412], [415, 503], [506, 545]].forEach(([a, b]) => glass.fillRect(a, 74, b - a, 124));
-    const plane = this.add.image(90, 86, planeTex(this)).setOrigin(0.5, 1).setScale(0.085).setAngle(7).setDepth(-50);
-    plane.setMask(glass.createGeometryMask());
     // 안내판 (면: x 186~452, y 26~62 → 중심 319, 44) — 배경 도트와 같은 크기의 픽셀 글자로 그려 넣음
     pixText(this, 319, 44, [
       { t: 'WELCOME TO KOREA', font: 'g14', color: '#f4f8ff', spacing: 1, bold: true },
@@ -62,26 +55,13 @@ export class Arrival extends BaseScene {
     banner(60, '환영해요', 'WELCOME');
     banner(581, '즐거운여행', 'ENJOY');
     this.reveal();
-    await this.wait(300);
-    // 접근 → 기수 들기(플레어) → 활주로(y 161) 접지 → 감속하며 오른쪽 기둥 뒤로 사라짐
-    // (앞쪽에 서 있는 비행기 꼬리 위로 지나가도록 하강은 뒤쪽에 몰아서)
-    this.tweens.add({ targets: plane, x: 360, duration: 2300, ease: 'Linear' });
-    this.tweens.add({ targets: plane, y: 161, duration: 2300, ease: 'Quad.In' });
-    this.tweens.add({ targets: plane, angle: -2, duration: 2300, ease: 'Sine.In' });
-    await this.wait(2300);
-    // 접지: 타이어 연기
-    for (let i = 0; i < 5; i++) {
-      const p = this.add.circle(plane.x - 8 + i * 2, 160, 1.5 + Math.random(), 0xffffff, 0.85).setDepth(-49).setMask(plane.mask!);
-      this.tweens.add({ targets: p, x: p.x - 10 - i * 3, y: 157, scale: 2.4, alpha: 0, duration: 600, onComplete: () => p.destroy() });
-    }
-    this.tweens.add({ targets: plane, angle: 0, duration: 300 });
-    this.tweens.add({ targets: plane, x: 600, duration: 3200, ease: 'Quad.Out' });
+    await this.wait(600);
 
     // --- #02~#04 여행자들이 양쪽에서 뛰어들어와 환호 ---
     // 콘티 공항 컷처럼 9명이 각자 색 캐리어를 끌고 들어온다
     const N = LINEUP.length, half = Math.ceil(N / 2);
-    const xs = LINEUP.map((_, i) => 60 + i * 65);
-    const cases = [0x3d6fd6, 0xf08ab0, 0x3a8a5a, 0xc0c0c8, 0xf0a030, 0x2e3f74, 0xf0e2c0, 0x5a5a66, 0x3a3a4a];
+    const xs = LINEUP.map((_, i) => Math.round(W / 2 + (i - (N - 1) / 2) * 68));
+    const cases = [0x3d6fd6, 0xf08ab0, 0x3a8a5a, 0xc0c0c8, 0x2e3f74, 0xf0e2c0, 0x5a5a66, 0x3a3a4a];
     const crew = LINEUP.map((id, i) => {
       const fromLeft = i < half;
       const s = this.char(id, fromLeft ? -40 - i * 30 : W + 40 + (N - 1 - i) * 30, 300, { scale: 2 });
@@ -116,7 +96,7 @@ export class Title extends BaseScene {
 
   async create() {
     playMusic('title');
-    setHero('hana');
+    setHero(new URLSearchParams(location.search).get('hero') ?? 'mei');
     this.bg('title');
     // 로고 가독성을 위한 상단 그라데이션
     const shadeTop = this.add.graphics().setDepth(5);
@@ -141,7 +121,7 @@ export class Title extends BaseScene {
 
     // 하단 캐릭터 라인업
     LINEUP.forEach((id, i) => {
-      const s = this.char(id, 64 + i * 64, 350, { scale: 2 });
+      const s = this.char(id, Math.round(W / 2 + (i - (LINEUP.length - 1) / 2) * 72), 350, { scale: 2 });
       this.time.delayedCall(400 + i * 90, () => this.play(s, 'cheer'));
       this.time.addEvent({ delay: 2600, loop: true, startAt: i * 300, callback: () => this.hop(s, 6) });
     });

@@ -6,9 +6,10 @@ import { DialogBox, panel, rrect, TYPE, tag, txt, bigText, floatText, W, H, COL,
 import { audioCtx, playMusic, sfx, stopMusic, TRACKS } from '../core/audio';
 import { director } from '../core/director';
 import { hearts, sparkles, confetti } from '../core/fx';
-import { CAST, NPC, OUTFITS } from '../art/cast';
+import { CAST, NPC, OUTFITS, pickCrew } from '../art/cast';
 import { bakeCharacter, type CharDef, type HairStyle } from '../art/characters';
 import { pixText } from '../art/pixeltext';
+import { steam } from '../core/ambient';
 
 // 화면 위 픽셀 손 커서 (자동 연출용 클릭 표시)
 async function autoClick(scene: BaseScene, x: number, y: number) {
@@ -28,8 +29,12 @@ export class Hansik extends BaseScene {
 
   async create() {
     this.bg('hansik');
-    const james = this.char('james', 320, 294, { scale: 3 });
+    // 콘티 #8: 제임스가 비빔밥을 크게 한 숟갈 (주인공도 옆자리에서 함께)
+    const james = this.char(pickCrew(['james'])[0], 432, 306, { scale: 4 });
     this.play(james, 'idle');
+    const me = this.char('hana', 196, 306, { scale: 4, outfit: OUTFITS.hanaLv3, key: 'hs_hero' });
+    this.play(me, 'idle');
+    this.lead = me;
     // 식탁 전경 (배경의 식탁 부분을 잘라 캐릭터 앞에 다시 그림)
     const tk = this.textures.get('hansik').getSourceImage().width / W;
     this.add.image(0, 0, 'hansik').setOrigin(0).setScale(1 / tk).setCrop(0, 252 * tk, W * tk, 108 * tk).setDepth(400);
@@ -38,11 +43,11 @@ export class Hansik extends BaseScene {
       this.tweens.add({ targets: o, scale: s * 0.5, delay, duration: 260, ease: 'Back.Out', onStart: () => delay && sfx.pop() });
       return o;
     };
-    put('bibimbap', 320, 266, 0.62);
-    put('kimchi', 214, 286, 0.5);
-    put('namul', 426, 286, 0.5);
-    const bell = this.add.image(156, 272, 'food', 'callbell').setScale(0.5).setDepth(700).setInteractive({ useHandCursor: true });
-    this.add.image(510, 270, 'food', 'sujeo').setScale(0.5).setDepth(700);
+    const bowlJ = put('bibimbap', 432, 268, 0.62);
+    const bowlM = put('bibimbap', 196, 268, 0.62);
+    put('kimchi', 314, 288, 0.5);
+    put('namul', 560, 290, 0.5);
+    const bell = this.add.image(70, 276, 'food', 'callbell').setScale(0.6).setDepth(700).setInteractive({ useHandCursor: true });
     this.addHud();
     await this.reveal();
     const box = DialogBox.mission(this, '벨 누르고 반찬 리필하기', 'Ring the bell for free banchan refills');
@@ -130,7 +135,10 @@ export class Hansik extends BaseScene {
       ['sprouts', 150, 300, 0.5], ['tofu', 492, 300, 0.5], ['eggroll', 260, 312, 0.5], ['ricebowl', 380, 312, 0.42],
       ['stew', 566, 300, 0.45], ['kimchi', 80, 306, 0.45], ['namul', 320, 326, 0.42],
     ];
-    this.play(james, 'eat');
+    // 숟가락으로 비빔밥을 떠먹으며 반찬을 기다림
+    this.eat(james, 'bibimbap', { bowl: bowlJ, utensil: 'spoon', foodColor: 0xe8603a, bites: 7 });
+    this.wait(250).then(() => this.eat(me, 'bibimbap', { bowl: bowlM, utensil: 'spoon', foodColor: 0xe8603a, bites: 6 }));
+    steam(this, 432, 254, 4, 460); steam(this, 196, 254, 4, 460);
     for (let i = 0; i < more.length; i++) {
       const [f, x, y, s] = more[i];
       put(f, x, y, s, 0);
@@ -163,7 +171,7 @@ export class Salon extends BaseScene {
   async create() {
     this.bg('salon');
     const seats = [145, 318, 478];
-    const ids = ['leo', 'amara', 'hana'];
+    const ids = pickCrew(['leo', 'amara', 'hana']);
     const defs: CharDef[] = ids.map((id) => (id === 'hana' ? { ...CAST.hana, outfit: OUTFITS.hanaLv3 } : CAST[id]));
     const crew = ids.map((id, i) => {
       const st = this.char('stylist', seats[i] + 34, 290, { scale: 2 });
@@ -176,7 +184,7 @@ export class Salon extends BaseScene {
       cape.fillStyle(0xfafafa); cape.fillPoints([{ x: -12, y: -42 }, { x: 12, y: -42 }, { x: 31, y: -6 }, { x: -31, y: -6 }], true);
       cape.fillStyle(0xe2e2ea); cape.fillRect(-29, -12, 58, 6); cape.fillRect(-1, -40, 2, 30);
       cape.fillStyle(0xff8fc0); cape.fillRect(-10, -44, 20, 3);
-      return { s, def: defs[i] };
+      return { s, st, def: defs[i] };
     });
     this.addHud();
     await this.reveal();
@@ -184,11 +192,11 @@ export class Salon extends BaseScene {
     await this.wait(500);
     const picks: HairStyle[] = ['short', 'bun', 'ponytail'];
     for (let k = 0; k < crew.length; k++) {
-      const { s, def } = crew[k];
+      const { s, st, def } = crew[k];
       this.emote(s, '?');
       const style = await this.hairPopup(def, seats[k] < 320 ? seats[k] + 50 : seats[k] - 230, 70, picks[k]);
-      // 드라이기 바람 + 변신
-      sfx.whoosh();
+      // 미용사가 가위로 싹둑싹둑 → 드라이어로 말리고 → 변신
+      await this.styling(s, st, def.hairColor);
       sparkles(this, s.x, s.y - 80, 24, undefined, 50);
       await this.wait(300);
       this.redress(s, { ...def, hair: style }, def.outfit, 'idle');
@@ -208,6 +216,50 @@ export class Salon extends BaseScene {
       'Korean salons are known for trendy cuts, color and scalp care. A favorite K-beauty stop.',
     );
     await this.completeMission('salon');
+  }
+
+  // 가위질(머리카락이 떨어짐) + 드라이어 바람
+  async styling(s: Phaser.GameObjects.Sprite, st: Phaser.GameObjects.Sprite, hairColor: number) {
+    const hy = s.y - s.displayHeight * 0.68; // 머리 높이
+    this.tweens.killTweensOf(st);
+    st.setFrame('hold');
+    // 가위
+    const sc = this.add.graphics({ x: s.x + 22, y: hy }).setDepth(s.depth + 2);
+    sc.fillStyle(0x1a1430); sc.fillRect(-1, -9, 3, 12); sc.fillRect(-5, 2, 4, 4); sc.fillRect(2, 2, 4, 4);
+    sc.fillStyle(0xe8ecf6); sc.fillRect(0, -8, 1, 10);
+    sc.fillStyle(0xff6b8a); sc.fillRect(-4, 3, 2, 2); sc.fillRect(3, 3, 2, 2);
+    const spots: [number, number][] = [[18, -6], [-16, -2], [14, 6], [-12, 8], [4, -14]];
+    for (const [dx, dy] of spots) {
+      await new Promise<void>((ok) => this.tweens.add({ targets: sc, x: s.x + dx, y: hy + dy, duration: 160, ease: 'Sine.InOut', onComplete: () => ok() }));
+      this.tweens.add({ targets: sc, scaleX: 0.6, yoyo: true, duration: 60 });
+      sfx.snip();
+      floatText(this, s.x + dx + 10, hy + dy - 10, '싹둑', '#ffffff', 9);
+      for (let q = 0; q < 4; q++) {
+        const c = this.add.rectangle(s.x + dx + Phaser.Math.Between(-4, 4), hy + dy, 2, Phaser.Math.Between(2, 4), hairColor).setDepth(s.depth + 1).setAngle(Phaser.Math.Between(-40, 40));
+        this.tweens.add({ targets: c, x: c.x + Phaser.Math.Between(-10, 10), y: s.y - 14, angle: c.angle + 120, alpha: 0.2, duration: 700, ease: 'Quad.In', onComplete: () => c.destroy() });
+      }
+      await this.wait(120);
+    }
+    sc.destroy();
+    // 드라이어
+    const dr = this.add.graphics({ x: s.x + 34, y: hy - 8 }).setDepth(s.depth + 2);
+    dr.fillStyle(0x1a1430); dr.fillRect(-3, -6, 16, 11); dr.fillRect(9, 3, 5, 11);
+    dr.fillStyle(0xff8fc0); dr.fillRect(-2, -5, 14, 9); dr.fillRect(10, 4, 3, 9);
+    dr.fillStyle(0x3a3a4a); dr.fillRect(-6, -4, 4, 7);
+    dr.fillStyle(0xffffff); dr.fillRect(0, -4, 6, 1);
+    sfx.dryer();
+    const wind = this.time.addEvent({
+      delay: 70, loop: true, callback: () => {
+        const l = this.add.rectangle(dr.x - 8, dr.y + Phaser.Math.Between(-3, 3), Phaser.Math.Between(6, 10), 1, 0xffffff, 0.8).setOrigin(1, 0.5).setDepth(s.depth + 2);
+        this.tweens.add({ targets: l, x: l.x - 22, alpha: 0, duration: 260, onComplete: () => l.destroy() });
+      },
+    });
+    this.tweens.add({ targets: dr, y: dr.y + 10, yoyo: true, repeat: 2, duration: 180 });
+    // 머리가 바람에 살랑
+    this.tweens.add({ targets: s, scaleX: s.scaleX * 1.02, yoyo: true, repeat: 3, duration: 120 });
+    await this.wait(1100);
+    wind.remove();
+    dr.destroy();
   }
 
   // 3x3 헤어스타일 선택 팝업
@@ -292,8 +344,9 @@ export class PhotoBooth extends BaseScene {
   async create() {
     this.cameras.main.setBackgroundColor('#f6d86a');
     // 큰 프레임(라이브) + 오른쪽 작은 프레임 4개
-    const big = { x: 26, y: 46, w: 300, h: 250 };
-    const smalls = [[340, 46], [484, 46], [340, 176], [484, 176]];
+    // 미션 박스(왼쪽 위) 아래로 내려 겹치지 않게
+    const big = { x: 26, y: 76, w: 300, h: 246 };
+    const smalls = [[340, 76], [484, 76], [340, 204], [484, 204]];
     const frameG = this.add.graphics().setDepth(1);
     const drawFrame = (x: number, y: number, w: number, h: number, c: number) => {
       frameG.fillStyle(0x1a1430); frameG.fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 6);
@@ -308,14 +361,16 @@ export class PhotoBooth extends BaseScene {
     live.add(deco);
     const maskG = this.make.graphics({}, false).fillRoundedRect(big.x, big.y, big.w, big.h, 4);
     live.setMask(maskG.createGeometryMask());
+    // 콘티 #6: 아마라·레오 + 주인공 (선글라스 소품)
+    const [pa, pl] = pickCrew(['amara', 'leo', 'hana']);
     const defs: CharDef[] = [
-      { ...CAST.amara, outfit: { ...CAST.amara.outfit, acc: ['sunglasses'] } },
-      { ...CAST.leo, outfit: { ...CAST.leo.outfit, acc: ['sunglasses'], accColor: 0xff8a3a } },
-      CAST.mei,
+      { ...CAST[pa], outfit: { ...CAST[pa].outfit, acc: ['sunglasses'] } },
+      { ...CAST[pl], outfit: { ...CAST[pl].outfit, acc: ['sunglasses'], accColor: 0xff8a3a } },
+      CAST.hana,
     ];
     const pplX = [96, 176, 256];
     const ppl = defs.map((d, i) => {
-      const s = this.char(d.id, pplX[i], 352 + (i === 1 ? 6 : 0), { scale: 4, def: d, key: `pb_${d.id}`, noShadow: true });
+      const s = this.char(d.id, pplX[i], 378 + (i === 1 ? 6 : 0), { scale: 4, def: d, key: `pb_${d.id}`, noShadow: true });
       live.add(s);
       return s;
     });
@@ -337,11 +392,11 @@ export class PhotoBooth extends BaseScene {
     await this.reveal();
     const box = DialogBox.mission(this, '포토부스에서 인생네컷 찍기', 'Snap a four-cut photo strip');
     box.setDepth(990);
-    if (!director.auto) tag(this, 175, 312, 'SPACE · CLICK  ·  찰칵! 찍기  Snap', { bg: PAL.ink, depth: 10 });
+    if (!director.auto) tag(this, 175, 338, 'SPACE · CLICK  ·  찰칵! 찍기  Snap', { bg: PAL.ink, depth: 10 });
     for (let k = 0; k < 4; k++) {
       drawDeco(k);
       setPose(k);
-      ppl.forEach((s) => this.tweens.add({ targets: s, scaleY: 2.1, yoyo: true, duration: 120 }));
+      ppl.forEach((s) => this.tweens.add({ targets: s, scaleY: s.scaleY * 1.05, yoyo: true, duration: 120 }));
       // 카운트다운
       for (const n of ['3', '2', '1']) {
         const c = pixText(this, big.x + big.w / 2, big.y + 40, [{ t: n, font: 'g14', color: '#ffffff', bold: true }], { outline: '#1a1430', shadow: '#1a1430', depth: 20 }).setScale(4);
@@ -350,8 +405,10 @@ export class PhotoBooth extends BaseScene {
         await this.wait(director.auto ? 420 : 350);
       }
       if (!director.auto) await director.waitInput(this);
-      // 라이브 프레임을 먼저 캡처한 뒤 찰칵 + 플래시
+      // 라이브 프레임을 먼저 캡처한 뒤 찰칵 + 플래시 (UI는 사진에 찍히지 않게 잠깐 숨김)
+      box.setVisible(false);
       const img = await new Promise<HTMLImageElement>((ok) => this.game.renderer.snapshotArea(big.x * ZOOM, big.y * ZOOM, big.w * ZOOM, big.h * ZOOM, (im) => ok(im as HTMLImageElement)));
+      box.setVisible(true);
       sfx.shutter();
       const flash = this.add.rectangle(big.x, big.y, big.w, big.h, 0xffffff).setOrigin(0).setDepth(30);
       this.tweens.add({ targets: flash, alpha: 0, duration: 350, onComplete: () => flash.destroy() });
@@ -439,22 +496,27 @@ export class Dance extends BaseScene {
       ['amara', { ...CAST.amara, outfit: OUTFITS.dance(0x1e1e2a, 0xf4f4f4) }],
       ['noah', { ...CAST.noah, outfit: { top: 'jacket', topColor: 0xe2c896, topColor2: 0xffffff, bottom: 'jeans', bottomColor: 0x8ab0e0, shoes: 0xffffff } }],
     ];
-    const crew = dancers.map(([id, d], i) => {
-      const s = this.char(id, 90 + i * 92, 318, { scale: 2, def: d, key: `dn_${id}` });
+    const dIds = pickCrew(dancers.map(([id]) => id));
+    const dancersC = dancers.map(([id, d], i) => [dIds[i], dIds[i] === id ? d : { ...CAST[dIds[i]], outfit: d.outfit }] as [string, CharDef]);
+    const crew = dancersC.map(([id, d], i) => {
+      const s = this.char(id, 90 + i * 92, 326, { scale: 2, def: d, key: `dn_${id}` });
       s.setFrame('idle0');
       return s;
     });
-    // 레인 & 리시버
+    // 노트 판: 댄서 머리 위 전용 패널 (노트는 아래에서 올라와 위 리시버에 닿음)
     const laneX = [266, 302, 338, 374];
-    const recvY = 92;
-    const recv = laneX.map((x, i) => this.add.image(x, recvY, 'arrow').setAngle(LANE_ANGLE[LANES[i]]).setTint(0x8a80c0).setAlpha(0.8).setDepth(60));
-    // 터치 버튼
-    laneX.forEach((x, i) => {
-      const b = this.add.image(220 + i * 66, 336, 'arrow').setAngle(LANE_ANGLE[LANES[i]]).setTint(LANE_COL[i]).setAlpha(0.6).setDepth(60).setInteractive();
-      b.on('pointerdown', () => press(i));
-    });
-    const judge = bigText(this, 320, 150, '', 2, '#6fd0ff', '#1a1430').setDepth(70);
-    const comboT = txt(this, 320, 196, '', { px: 14, weight: 900, color: '#ffffff', stroke: '#1a1430', strokeThickness: 3, align: 'center' }).setOrigin(0.5).setDepth(70);
+    const recvY = 88, panelTop = 68, panelBot = 212;
+    const pg = this.add.graphics().setDepth(55);
+    pg.fillStyle(0x0a0620, 0.72); pg.fillRoundedRect(244, panelTop, 152, panelBot - panelTop, 6);
+    pg.lineStyle(1, 0x6ff0ff, 0.9); pg.strokeRoundedRect(244.5, panelTop + 0.5, 151, panelBot - panelTop - 1, 6);
+    laneX.forEach((x, i) => { pg.fillStyle(LANE_COL[i], 0.08); pg.fillRect(x - 16, panelTop + 4, 32, panelBot - panelTop - 8); });
+    pg.fillStyle(0xffffff, 0.18); pg.fillRect(248, recvY - 1, 144, 2);
+    const recv = laneX.map((x, i) => this.add.image(x, recvY, 'arrow').setAngle(LANE_ANGLE[LANES[i]]).setTint(0x8a80c0).setAlpha(0.9).setDepth(60));
+    const noteMask = this.make.graphics({}, false).fillRect(244, panelTop + 2, 152, panelBot - panelTop - 4).createGeometryMask();
+    // 터치: 레인 기둥 아무 곳이나 누르면 그 방향
+    laneX.forEach((x, i) => this.add.zone(x, (panelTop + panelBot) / 2, 34, panelBot - panelTop).setDepth(61).setInteractive().on('pointerdown', () => press(i)));
+    const judge = bigText(this, 486, 112, '', 2, '#6fd0ff', '#1a1430').setDepth(70);
+    const comboT = txt(this, 160, 112, '', { px: 14, weight: 900, color: '#ffffff', stroke: '#1a1430', strokeThickness: 3, align: 'center' }).setOrigin(0.5).setDepth(70);
     this.addHud();
     await this.reveal();
     const box = DialogBox.mission(this, '아이돌처럼 춤추기', 'Dance like a K-pop idol');
@@ -467,7 +529,7 @@ export class Dance extends BaseScene {
     for (let i = 16; i < tr.steps - 8; i++) if (tr.lead[i] && i % 2 === 0) notes.push({ t: i * stepDur, lane: tr.lead[i] % 4 });
     const t0 = playMusic('dance', true);
     const ac = audioCtx();
-    const speed = 170; // px/s
+    const speed = 110; // px/s (노트 판 높이에 맞춤)
     let combo = 0, hits = 0;
     const xpPer = 300 / notes.length;
     let pendingXp = 0, givenXp = 0;
@@ -486,7 +548,6 @@ export class Dance extends BaseScene {
       recv[n.lane].setTint(LANE_COL[n.lane]);
       this.time.delayedCall(90, () => recv[n.lane].setTint(0x8a80c0));
       sfx.hit();
-      crew.forEach((s, i) => s.setFrame(`dance${(hits + i) % 4}`));
       if (combo % 10 === 0) this.emote(Phaser.Utils.Array.GetRandom(crew), Phaser.Utils.Array.GetRandom(['♪', '♥', '★'] as const));
       pendingXp += xpPer;
       if (hits % 8 === 0) this.award(payout(), Phaser.Math.Between(80, 560), 220);
@@ -504,12 +565,19 @@ export class Dance extends BaseScene {
     this.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
 
     await new Promise<void>((resolve) => {
+      let beat = -1;
       const upd = () => {
         const now = ac.currentTime - t0;
+        // 박자마다 모두 안무 동작을 바꾸고 살짝 튐 (노트를 치지 않아도 계속 춤춤)
+        const b = Math.floor(now / (60 / tr.bpm));
+        if (b !== beat && now > 0) {
+          beat = b;
+          crew.forEach((s, i) => { s.setFrame(`dance${(b + (i % 2) * 2) % 4}`); this.tweens.add({ targets: s, y: 322, yoyo: true, duration: 90 }); });
+        }
         for (const n of notes) {
           if (n.hit || n.missed) continue;
           const dt = n.t - now;
-          if (dt < 2.2 && !n.o) n.o = this.add.image(laneX[n.lane], 400, 'arrow').setAngle(LANE_ANGLE[LANES[n.lane]]).setTint(LANE_COL[n.lane]).setDepth(65);
+          if (dt < (panelBot - recvY + 20) / speed && !n.o) n.o = this.add.image(laneX[n.lane], panelBot + 20, 'arrow').setAngle(LANE_ANGLE[LANES[n.lane]]).setTint(LANE_COL[n.lane]).setDepth(65).setMask(noteMask);
           if (n.o) n.o.y = recvY + dt * speed;
           if (director.auto && dt <= 0) doJudge(n, 0);
           else if (dt < -0.16) {
@@ -526,6 +594,7 @@ export class Dance extends BaseScene {
     crew.forEach((s, i) => { this.play(s, 'cheer'); this.hop(s, 12, i * 80); this.emote(s, '♥', i * 100); });
     confetti(this, 120);
     judge.setVisible(false); comboT.setVisible(false);
+    this.tweens.add({ targets: [pg, ...recv], alpha: 0, duration: 300 });
     const fc = bigText(this, 320, 158, hits === notes.length ? 'FULL COMBO!' : `${hits} / ${notes.length}`, 3, '#ffd166', '#151a33', '#8a5a10').setDepth(905);
     const fcTag = tag(this, 320, 194, hits === notes.length ? '완벽한 무대였어요  Full combo!' : `${hits}개 성공! 멋진 무대였어요  Great stage!`, { depth: 905, clamp: false, pop: true });
     // 놓친 노트만큼 별 감점

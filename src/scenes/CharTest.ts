@@ -1,6 +1,7 @@
 // 개발용: 모든 캐릭터·포즈를 한 화면에 늘어놓고 확인 (?scene=chartest)
 import Phaser from 'phaser';
 import { bakeCharacter, renderPose, POSES, type CharDef, type Outfit } from '../art/characters';
+import { scale2x } from '../art/pixel';
 import { CAST, LINEUP, NPC, OUTFITS } from '../art/cast';
 
 export class CharTest extends Phaser.Scene {
@@ -35,8 +36,8 @@ export class CharTest extends Phaser.Scene {
 }
 
 // 개발용: 캐릭터×포즈 시트를 PNG로 저장  window.charSheet('lineup', 2)
-export function charSheet(which = 'lineup', scale = 2) {
-  const poses = ['idle0', 'walk0', 'cheer0', 'wave0', 'eat0', 'v0', 'sit0', 'back0', 'run0', 'lie0', 'dance0', 'selfie'];
+export function charSheet(which = 'lineup', scale = 2, only?: string[], hd = false) {
+  const poses = only ?? ['idle0', 'walk0', 'cheer0', 'wave0', 'eat0', 'v0', 'sit0', 'back0', 'run0', 'lie0', 'dance0', 'selfie'];
   let rows: [CharDef, Outfit | undefined][] = LINEUP.map((id) => [CAST[id], undefined]);
   if (which === 'hana') rows = [OUTFITS.hanaLv1, OUTFITS.hanaLv2, OUTFITS.hanaLv3, OUTFITS.hanaMax, OUTFITS.jjimjil(), OUTFITS.monk, OUTFITS.uniformF, OUTFITS.run0].map((o) => [CAST.hana, o]);
   if (which === 'npc') rows = Object.values(NPC).map((d) => [d, undefined]);
@@ -45,6 +46,6 @@ export function charSheet(which = 'lineup', scale = 2) {
   const ctx = cv.getContext('2d')!;
   ctx.fillStyle = '#cfd8e8'; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.imageSmoothingEnabled = false;
-  rows.forEach(([d, o], r) => poses.forEach((p, i) => ctx.drawImage(renderPose(d, p, o).toCanvas(), i * 96 * scale, r * 112 * scale, 96 * scale, 112 * scale)));
+  rows.forEach(([d, o], r) => poses.forEach((p, i) => ctx.drawImage((hd ? scale2x(renderPose(d, p, o)) : renderPose(d, p, o)).toCanvas(), i * 96 * scale, r * 112 * scale, 96 * scale, 112 * scale)));
   return new Promise((ok) => cv.toBlob((b) => fetch(`/__capture?name=sheet_${which}.png`, { method: 'POST', body: b }).then(() => ok(which))));
 }

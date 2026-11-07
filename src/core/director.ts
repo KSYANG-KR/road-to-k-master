@@ -18,6 +18,10 @@ class Director {
   stopped = false;
   private recorder?: MediaRecorder;
   private chunks: Blob[] = [];
+  // 개발 서버 녹화: 조각을 바로 captures/ 에 이어 붙여 저장 (긴 녹화도 메모리에 쌓지 않음)
+  private stream = q.has('stream') && import.meta.env.DEV;
+  private sent: Promise<unknown> = Promise.resolve();
+  private recName = q.get('recname') ?? 'road-to-k-master.webm';
 
   // 씬 시간 기준 대기 (씬이 멈추면 같이 멈춤)
   wait(scene: Phaser.Scene, ms: number) {
@@ -46,13 +50,19 @@ class Director {
   startRecording(canvas: HTMLCanvasElement) {
     if (!this.rec || this.recorder) return;
     document.body.classList.add('recording');
-    const stream = canvas.captureStream(60);
+    const stream = canvas.captureStream(Number(q.get('fps')) || 60);
     try {
       audioStream().getAudioTracks().forEach((t) => stream.addTrack(t));
     } catch { /* 오디오 없이 녹화 */ }
-    const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m));
-    this.recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 12_000_000 });
-    this.recorder.ondataavailable = (e) => e.data.size && this.chunks.push(e.data);
+    const mime = [q.get('mime') ?? '', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => m && MediaRecorder.isTypeSupported(m));
+    this.recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: Number(q.get('vbr')) || 12_000_000 });
+    if (this.stream) fetch(`/__capture?name=${this.recName}`, { method: 'POST', body: '' });
+    this.recorder.ondataavailable = (e) => {
+      if (!e.data.size) return;
+      if (!this.stream) { this.chunks.push(e.data); return; }
+      const d = e.data;
+      this.sent = this.sent.then(() => fetch(`/__capture?name=${this.recName}&append=1`, { method: 'POST', body: d }));
+    };
     this.recorder.start(1000);
   }
 
@@ -60,6 +70,11 @@ class Director {
     if (!this.recorder) return;
     const rec = this.recorder;
     await new Promise<void>((ok) => { rec.onstop = () => ok(); rec.stop(); });
+    if (this.stream) {
+      await this.sent;
+      await fetch(`/__capture?name=${this.recName}.done`, { method: 'POST', body: 'done' });
+      return;
+    }
     const blob = new Blob(this.chunks, { type: 'video/webm' });
     // 개발 서버면 captures/ 로 저장, 아니면 다운로드
     try {

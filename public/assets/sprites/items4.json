@@ -1,0 +1,92 @@
+{
+ "frames": {
+  "homerunball": {
+   "frame": {
+    "x": 1,
+    "y": 1,
+    "w": 46,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 48
+   }
+  },
+  "milkis": {
+   "frame": {
+    "x": 49,
+    "y": 1,
+    "w": 33,
+    "h": 58
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 33,
+    "h": 58
+   },
+   "sourceSize": {
+    "w": 33,
+    "h": 58
+   }
+  },
+  "bluelemonade": {
+   "frame": {
+    "x": 84,
+    "y": 1,
+    "w": 39,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 39,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 39,
+    "h": 62
+   }
+  },
+  "bluemix": {
+   "frame": {
+    "x": 125,
+    "y": 1,
+    "w": 36,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 62
+   }
+  }
+ },
+ "meta": {
+  "image": "items4.png",
+  "size": {
+   "w": 164,
+   "h": 66
+  },
+  "scale": "1"
+ }
+}

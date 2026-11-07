@@ -2,7 +2,7 @@
 // 96x112 프레임에 신체 부위를 "파트" 단위로 그린 뒤
 //  ① 파트별 3톤 음영(빛: 좌상단) ② 파트 경계 컨투어 ③ 앞머리·턱 그림자 ④ 얼굴·소품 데칼 ⑤ 바깥 셀아웃 외곽선
 // 순서로 마감한다. 미션에서 옷/헤어를 바꾸면 같은 정의로 시트를 다시 굽는다.
-import { PixelCanvas, registerFrames, shade, mix, type Color } from './pixel';
+import { PixelCanvas, registerFrames, scale2x, shade, mix, type Color } from './pixel';
 
 export const FRAME = 96;
 export const FRAME_H = 112;
@@ -54,8 +54,8 @@ export interface CharDef {
   outfit: Outfit;
 }
 
-type Arm = 'down' | 'up' | 'wave' | 'wave2' | 'out' | 'mouth' | 'hold' | 'fwd' | 'v' | 'hip' | 'swingF' | 'swingB' | 'point' | 'chin' | 'cam';
-type Legs = 'stand' | 'walk1' | 'walk2' | 'wide' | 'sit' | 'kneelUp' | 'none';
+type Arm = 'down' | 'up' | 'wave' | 'wave2' | 'out' | 'mouth' | 'hold' | 'fwd' | 'v' | 'hip' | 'swingF' | 'swingB' | 'point' | 'chin' | 'cam' | 'brow' | 'raise' | 'pumpF' | 'pumpB' | 'reach' | 'prop';
+type Legs = 'stand' | 'walk1' | 'walk2' | 'wide' | 'sit' | 'kneelUp' | 'runL' | 'runR' | 'stride0' | 'stride1' | 'stride2' | 'stride3' | 'none';
 type Face = 'normal' | 'smile' | 'open' | 'joy' | 'focus' | 'wink' | 'chew' | 'surprise';
 
 interface Pose {
@@ -67,6 +67,7 @@ interface Pose {
   view?: 'front' | 'back' | 'side' | 'lie';
   run?: number; // side view stride phase 0..3
   kick?: number; // lie pose leg phase
+  lieHand?: 'hold' | 'mouth'; // 엎드린 자세에서 한 손으로 음식 들기 / 입으로 가져가기
 }
 
 // 포즈 테이블 — 장면 스크립트는 이 이름으로 프레임을 고른다
@@ -98,6 +99,10 @@ export const POSES: Record<string, Pose> = {
   sitEat0: { armL: 'hold', armR: 'mouth', legs: 'sit', face: 'chew' },
   sitEat1: { armL: 'hold', armR: 'hold', legs: 'sit', face: 'joy' },
   sitCheer: { armL: 'up', armR: 'up', legs: 'sit', face: 'open' },
+  sitLean: { armL: 'prop', armR: 'prop', legs: 'sit', face: 'joy' },
+  sitLean1: { armL: 'prop', armR: 'prop', legs: 'sit', face: 'smile', dy: 1 },
+  sitRaise: { armL: 'hold', armR: 'raise', legs: 'sit', face: 'focus' },
+  sitBrow: { armL: 'hold', armR: 'brow', legs: 'sit', face: 'surprise' },
   dance0: { armL: 'up', armR: 'out', legs: 'wide', face: 'open' },
   dance1: { armL: 'hip', armR: 'point', legs: 'stand', face: 'wink', dy: 1 },
   dance2: { armL: 'out', armR: 'up', legs: 'wide', face: 'joy' },
@@ -106,14 +111,32 @@ export const POSES: Record<string, Pose> = {
   back1: { armL: 'up', armR: 'up', legs: 'stand', face: 'normal', view: 'back' },
   back2: { armL: 'down', armR: 'wave', legs: 'stand', face: 'normal', view: 'back' },
   back3: { armL: 'down', armR: 'wave2', legs: 'stand', face: 'normal', view: 'back', dy: 1 },
-  run0: { armL: 'down', armR: 'down', legs: 'none', face: 'smile', view: 'side', run: 0 },
-  run1: { armL: 'down', armR: 'down', legs: 'none', face: 'smile', view: 'side', run: 1 },
-  run2: { armL: 'down', armR: 'down', legs: 'none', face: 'smile', view: 'side', run: 2 },
-  run3: { armL: 'down', armR: 'down', legs: 'none', face: 'smile', view: 'side', run: 3 },
+  // 달리기: 옆으로 성큼성큼 뛰는 다리 + 진행 방향으로 살짝 돌린 정면 얼굴 (콘티 #18 러너)
+  // 달리기: 상체·얼굴은 다른 장면과 같은 정면, 다리만 오른쪽(진행 방향)으로 크게 내딛는 보폭
+  run0: { armL: 'down', armR: 'down', legs: 'none', face: 'open', view: 'side', run: 0 },
+  run1: { armL: 'down', armR: 'down', legs: 'none', face: 'open', view: 'side', run: 1 },
+  run2: { armL: 'down', armR: 'down', legs: 'none', face: 'open', view: 'side', run: 2 },
+  run3: { armL: 'down', armR: 'down', legs: 'none', face: 'open', view: 'side', run: 3 },
   lie0: { armL: 'down', armR: 'down', legs: 'none', face: 'smile', view: 'lie', kick: 0 },
   lie1: { armL: 'down', armR: 'down', legs: 'none', face: 'joy', view: 'lie', kick: 1 },
-  lieEat: { armL: 'down', armR: 'down', legs: 'none', face: 'chew', view: 'lie', kick: 2 },
+  lieEat: { armL: 'down', armR: 'down', legs: 'none', face: 'chew', view: 'lie', kick: 2, lieHand: 'mouth' },
+  lieHold: { armL: 'down', armR: 'down', legs: 'none', face: 'joy', view: 'lie', kick: 1, lieHand: 'hold' },
+  // 서서 한 손엔 컵(그릇), 한 손엔 젓가락·숟가락
+  eatL1: { armL: 'hold', armR: 'hold', legs: 'stand', face: 'joy' },
+  eatT1: { armL: 'down', armR: 'reach', legs: 'stand', face: 'joy' },
+  eatL0: { armL: 'hold', armR: 'mouth', legs: 'stand', face: 'chew' },
 };
+
+// 오른손(화면 오른쪽 팔) 끝 위치: 소품을 손에 붙일 때 사용. 원점(48,110) 기준 텍스처 좌표
+export function handPos(frame: string, left = false): [number, number] | null {
+  const p = POSES[frame];
+  if (p?.view === 'lie' && p.lieHand && !left) return p.lieHand === 'mouth' ? [28 - 48, 80 - 110] : [8 - 48, 90 - 110];
+  if (!p || p.view === 'lie' || p.view === 'side' || p.view === 'back') return null;
+  const up = (p.dy ?? 0) * 2 + (p.legs === 'sit' ? 12 : 0);
+  const arm = ARMS[left ? p.armL : p.armR];
+  const end = arm[arm.length - 1];
+  return [(left ? 38 + end[0] : 58 - end[0]) - 48, 62 + up + end[1] - 110];
+}
 
 const SKIN: Record<Skin, Color> = {
   fair: 0xffe2cf,
@@ -801,7 +824,8 @@ function accFace(c: Ctx, cx: number, cy: number) {
 // ---------------- 팔 ----------------
 const ARMS: Record<Arm, P[]> = {
   down: [[0, 0], [-3, 10], [-4, 20]],
-  up: [[0, 0], [-6, -10], [-9, -22]],
+  // 만세: 머리 바깥으로 벌려 올려 손이 머리카락에 가리지 않게
+  up: [[0, 0], [-9, -9], [-15, -23]],
   wave: [[0, 0], [-9, -5], [-11, -17]],
   wave2: [[0, 0], [-11, -3], [-18, -13]],
   out: [[0, 0], [-10, 4], [-20, 2]],
@@ -815,6 +839,17 @@ const ARMS: Record<Arm, P[]> = {
   swingB: [[0, 0], [-5, 9], [-8, 18]],
   chin: [[0, 0], [-3, 10], [4, -4]],
   cam: [[0, 0], [-10, -2], [-19, -12]],
+  // 계란을 이마로: 팔꿈치를 옆으로 들고 손을 이마 앞으로
+  brow: [[0, 0], [-10, -8], [6, -31]],
+  // 달리기 팔치기: 앞으로 굽혀 올린 주먹 / 뒤로 젖힌 팔
+  pumpF: [[0, 0], [-2, 9], [5, 4]],
+  // 상 위 그릇으로 손을 뻗어 숟가락 담그기
+  reach: [[0, 0], [-2, 11], [4, 21]],
+  // 엉덩이 옆 바닥을 짚음 (뒤로 살짝 기댐)
+  prop: [[0, 0], [-7, 9], [-11, 19]],
+  pumpB: [[0, 0], [-7, 7], [-11, 15]],
+  // 이마 치기 직전: 계란을 머리 위로 치켜듦
+  raise: [[0, 0], [-10, -8], [-6, -30]],
 };
 
 function sleeveInfo(o: Outfit): { col: Color; len: number; wide: boolean; cuff?: Color } {
@@ -1029,11 +1064,24 @@ function legsFront(c: Ctx, legs: Legs, up: number) {
   if (legs === 'none') return;
   if (legs === 'sit') {
     const y0 = 92;
-    s.part(pantsLeg || o.bottom === 'shorts' ? B : c.skin, { sr: 2, sb: 1, hl: 1 });
-    s.poly([[34, y0], [62, y0], [70, y0 + 6], [68, y0 + 13], [28, y0 + 13], [26, y0 + 6]]);
-    if (o.bottom === 'shorts') { s.part(c.skin, SKIN_O); s.ellipse(32, y0 + 9, 5, 4); s.ellipse(64, y0 + 9, 5, 4); }
-    s.part(B, { sr: 1, sb: 0, hl: 0 }); s.rect(47, y0 + 4, 2, 9);
-    s.part(shoe, { sr: 1, sb: 1, hl: 1 }); s.ellipse(25, y0 + 10, 5, 3.5); s.ellipse(71, y0 + 10, 5, 3.5);
+    const legCol = pantsLeg || o.bottom === 'shorts' ? B : c.skin;
+    const shinCol = pantsLeg ? B : c.skin;
+    // 뒤쪽 정강이 (오른 무릎 → 왼쪽 가운데로)
+    s.part(shade(shinCol, 0.85), { sr: 1, sb: 1, hl: 0 });
+    s.path([[64, y0 + 8], [44, y0 + 12]], 5);
+    // 허벅지 (엉덩이 → 바깥 무릎)
+    s.part(legCol, { sr: 2, sb: 1, hl: 1 });
+    c.torsoIds.push(s.cur);
+    s.poly([[37, y0 - 2], [59, y0 - 2], [62, y0 + 4], [48, y0 + 9], [34, y0 + 4]]);
+    s.path([[41, y0 + 1], [30, y0 + 8]], 6); s.path([[55, y0 + 1], [66, y0 + 8]], 6);
+    if (o.bottom === 'shorts') { s.part(c.skin, SKIN_O); s.ellipse(29, y0 + 9, 4.5, 4); s.ellipse(67, y0 + 9, 4.5, 4); }
+    // 앞쪽 정강이 (왼 무릎 → 오른쪽 가운데로) 가 위에 겹침
+    s.part(shinCol, { sr: 1, sb: 1, hl: 1 });
+    s.path([[30, y0 + 9], [52, y0 + 12]], 5);
+    // 접어 넣은 두 발 (발바닥이 살짝 보임)
+    s.part(shoe, { sr: 1, sb: 1, hl: 1 });
+    s.ellipse(55, y0 + 11, 4, 3); s.ellipse(41, y0 + 12.5, 4, 3);
+    if (!o.barefoot) { s.part(lum(shoe) > 0.8 ? 0xcfd0dc : 0xf2f2f2, { flat: true }); s.rect(53, y0 + 13, 5, 1); }
     if (o.bottom === 'skirt' || o.bottom === 'chima') { s.part(B, { sr: 2, sb: 1, hl: 1 }); s.poly([[36, y0 - 4], [60, y0 - 4], [66, y0 + 6], [30, y0 + 6]]); }
     return;
   }
@@ -1042,6 +1090,9 @@ function legsFront(c: Ctx, legs: Legs, up: number) {
   if (legs === 'walk2') { rUp = 2; lx -= 1; rx += 1; }
   if (legs === 'wide') spread = 5;
   if (legs === 'kneelUp') rUp = 7;
+  // 달리기: 한쪽 무릎을 높이 들고 다른 다리로 디딤
+  if (legs === 'runL') { lUp = 11; lx += 1; rx += 1; }
+  if (legs === 'runR') { rUp = 11; lx -= 1; rx -= 1; }
   const wide = o.bottom === 'baggy' || o.bottom === 'baji' ? 6.5 : 5.5;
   const leg = (cx: number, upY: number, dir: number) => {
     const off = spread * dir;
@@ -1062,8 +1113,8 @@ function legsFront(c: Ctx, legs: Legs, up: number) {
       s.rect(cx - 5 + off, bot + 5, 12, 1);
     }
   };
-  leg(lx, lUp, -1);
-  leg(rx, rUp, 1);
+  if (legs.startsWith('stride')) strideLegs(c, Number(legs.slice(6)), up);
+  else { leg(lx, lUp, -1); leg(rx, rUp, 1); }
   // 허리/하의
   switch (o.bottom) {
     case 'jeans': case 'pants': case 'shorts': case 'baggy': case 'baji': {
@@ -1084,6 +1135,45 @@ function legsFront(c: Ctx, legs: Legs, up: number) {
   }
 }
 
+// 달리기 다리 (옆으로 본 보폭): [뒤쪽 다리, 앞쪽 다리] 엉덩이 → 무릎 → 발목
+function strideLegs(c: Ctx, phase: number, up: number) {
+  const s = c.s, o = c.o, B = o.bottomColor;
+  const pantsLeg = ['jeans', 'pants', 'baggy', 'baji'].includes(o.bottom);
+  const hy = 80 + Math.min(up, 2);
+  const L: [P[], P[]][] = [
+    // 0: 오른다리 앞으로 쭉, 왼다리 뒤로 차올림
+    [[[44, hy], [37, hy + 10], [28, hy + 12]], [[53, hy], [60, hy + 10], [65, 100]]],
+    // 1: 공중 — 왼다리 무릎 앞으로 들고, 오른다리 뒤로 접음
+    [[[44, hy], [51, hy + 7], [49, hy + 16]], [[53, hy], [50, hy + 11], [43, hy + 16]]],
+    // 2: 왼다리 앞으로 쭉, 오른다리 뒤로 차올림
+    [[[44, hy], [52, hy + 10], [58, 100]], [[53, hy], [45, hy + 10], [36, hy + 12]]],
+    // 3: 공중 — 오른다리 무릎 들고, 왼다리 뒤로 접음
+    [[[44, hy], [42, hy + 11], [35, hy + 16]], [[53, hy], [60, hy + 7], [58, hy + 16]]],
+  ];
+  const leg = (pts: P[], dark: boolean) => {
+    const k = (col: Color) => (dark ? shade(col, 0.78) : col);
+    s.part(k(pantsLeg ? B : c.skin), { sr: 1, sb: 1, hl: 1 });
+    c.torsoIds.push(s.cur);
+    s.path(pts, 5.6);
+    // 반바지·치마 아래 허벅지 덮기
+    if (!pantsLeg && o.bottom !== 'none') {
+      s.part(k(B), { sr: 1, sb: 1, hl: 1 });
+      const t = o.bottom === 'shorts' ? 0.7 : 0.5;
+      s.path([pts[0], [pts[0][0] + (pts[1][0] - pts[0][0]) * t, pts[0][1] + (pts[1][1] - pts[0][1]) * t]], 6.6);
+    }
+    if (o.socks && !pantsLeg) { s.part(k(o.socks), { sr: 1, sb: 0, hl: 0 }); const [ax, ay] = pts[2]; s.ellipse(ax, ay - 1, 3.2, 3.2); }
+    // 운동화 옆모습 (앞코가 오른쪽)
+    const [fx, fy] = pts[2];
+    const shoe = o.barefoot ? c.skin : o.shoes;
+    s.part(k(shoe), { sr: 1, sb: 1, hl: 1 });
+    s.ellipse(fx + 3, fy + 2.5, 7, 4);
+    if (!o.barefoot) { s.part(dark ? 0xc8c8d4 : 0xf6f6f6, { flat: true }); s.rect(fx - 3, fy + 5, 13, 1); }
+  };
+  const [back, front] = L[phase];
+  leg(back, true);
+  leg(front, false);
+}
+
 function chima(c: Ctx, ty: number) {
   const s = c.s, B = c.o.bottomColor;
   const id = s.part(B, { sr: 4, sb: 2, hl: 1 });
@@ -1095,77 +1185,132 @@ function chima(c: Ctx, ty: number) {
 }
 
 // ---------------- 옆모습 달리기 ----------------
+// 오른쪽을 향해 달리는 진짜 옆모습: 옆얼굴(눈 하나·코끝·입), 같은 머리색·머리 모양, 같은 옷
 function drawSide(c: Ctx, phase: number) {
-  const s = c.s, o = c.o;
+  const s = c.s, o = c.o, d = c.d;
   const B = o.bottomColor;
   const pantsLeg = ['jeans', 'pants', 'baggy', 'baji'].includes(o.bottom);
-  const legs: [P[], P[]][] = [
-    [[[50, 82], [57, 92], [62, 101]], [[47, 82], [40, 91], [32, 94]]],
-    [[[50, 82], [53, 93], [50, 102]], [[47, 82], [43, 91], [42, 100]]],
-    [[[47, 82], [41, 91], [34, 94]], [[50, 82], [56, 92], [60, 101]]],
-    [[[47, 82], [44, 92], [43, 101]], [[50, 82], [52, 93], [49, 102]]],
+  const bob = phase % 2 === 1 ? -2 : 0; // 두 발이 뜬 순간 위로
+  const Y = (p: P[]): P[] => p.map(([x, y]) => [x, y + bob]);
+  const sway = [1, 0, -1, 0][phase];
+  // 가까운 다리(오른다리) · 먼 다리 : 엉덩이 → 무릎 → 발목
+  const LEGS: [P[], P[]][] = [
+    [[[50, 80], [57, 90], [62, 101]], [[48, 80], [41, 89], [32, 92]]],
+    [[[50, 80], [56, 87], [53, 97]], [[48, 80], [44, 90], [37, 95]]],
+    [[[50, 80], [43, 89], [34, 92]], [[48, 80], [55, 90], [60, 101]]],
+    [[[50, 80], [46, 90], [39, 95]], [[48, 80], [54, 87], [51, 97]]],
   ];
-  const [front, back] = legs[phase];
-  const leg = (pts: P[], dark: boolean) => {
-    const k = (col: Color) => (dark ? shade(col, 0.82) : col);
-    s.part(k(pantsLeg ? B : c.skin), { sr: 1, sb: 1, hl: 1 });
-    s.path(pts, 4);
-    if (o.bottom === 'shorts') { s.part(k(B), { sr: 1, sb: 1, hl: 1 }); s.path([pts[0], [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2]], 4.6); }
-    const [fx, fy] = pts[pts.length - 1];
-    s.part(k(o.shoes), { sr: 1, sb: 1, hl: 1 });
-    s.ellipse(fx + 2, fy + 2, 6, 3.5);
-    s.part(0xf2f2f2, { flat: true }); s.rect(fx - 3, fy + 5, 11, 1);
-  };
-  const armsB: P[][] = [[[49, 63], [56, 71], [62, 66]], [[49, 63], [48, 74], [52, 79]], [[49, 63], [42, 72], [37, 78]], [[49, 63], [48, 74], [52, 79]]];
-  const armsF: P[][] = [[[49, 63], [42, 72], [37, 78]], [[49, 63], [50, 74], [55, 78]], [[49, 63], [56, 71], [62, 66]], [[49, 63], [50, 74], [55, 78]]];
+  // 팔: 어깨 → 팔꿈치 → 주먹 (가까운 팔은 가까운 다리와 반대로)
+  const FWD: P[] = [[50, 61], [55, 70], [61, 64]];
+  const BACK: P[] = [[49, 61], [43, 68], [39, 75]];
+  const MID: P[] = [[50, 61], [48, 71], [53, 76]];
+  const ARMS: [P[], P[]][] = [[BACK, FWD], [MID, MID], [FWD, BACK], [MID, MID]];
+  const [nearLeg, farLeg] = LEGS[phase];
+  const [nearArm, farArm] = ARMS[phase];
   const sv = sleeveInfo(o);
-  const armDraw = (pts: P[], dark: boolean) => {
-    const k = (col: Color) => (dark ? shade(col, 0.82) : col);
-    s.part(k(sv.len > 10 ? sv.col : c.skin), { sr: 1, sb: 1, hl: 1 });
-    s.path(pts, 2.8);
-    s.part(k(sv.col), { sr: 1, sb: 1, hl: 1 });
-    s.path([pts[0], [pts[0][0] + (pts[1][0] - pts[0][0]) * 0.6, pts[0][1] + (pts[1][1] - pts[0][1]) * 0.6]], 3.3);
-    s.part(k(c.skin), { sr: 1, sb: 1, hl: 0 });
-    const [hx, hy] = pts[pts.length - 1];
-    s.ellipse(hx, hy, 3.2, 3.2);
+  const leg = (pts0: P[], dark: boolean) => {
+    const pts = Y(pts0);
+    const k = (col: Color) => (dark ? shade(col, 0.78) : col);
+    s.part(k(pantsLeg ? B : c.skin), { sr: 1, sb: 1, hl: 1 });
+    c.torsoIds.push(s.cur);
+    s.path(pts, 5.2);
+    if (!pantsLeg && o.bottom !== 'none') {
+      s.part(k(B), { sr: 1, sb: 1, hl: 1 });
+      const t = o.bottom === 'shorts' ? 0.5 : 0.4;
+      s.path([pts[0], [pts[0][0] + (pts[1][0] - pts[0][0]) * t, pts[0][1] + (pts[1][1] - pts[0][1]) * t]], 5.6);
+    }
+    if (o.socks && !pantsLeg) { s.part(k(o.socks), { sr: 1, sb: 0, hl: 0 }); const [ax, ay] = pts[2]; s.ellipse(ax, ay - 1, 3, 3); }
+    const [fx, fy] = pts[2];
+    const shoe = o.barefoot ? c.skin : o.shoes;
+    s.part(k(shoe), { sr: 1, sb: 1, hl: 1 });
+    s.ellipse(fx + 3, fy + 2.5, 6.5, 3.8);
+    if (!o.barefoot) { s.part(dark ? 0xbfc0cc : 0xf6f6f6, { flat: true }); s.rect(fx - 3, fy + 5, 12, 1); }
   };
-  // 뒷머리 (긴 머리는 뒤로 흩날림)
-  const cx = 52, cy = 41;
-  const hb = s.part(c.hc, HB); c.hairIds.push(hb);
-  if (['wavy', 'long', 'braid'].includes(c.d.hair)) s.poly([[cx - 6, cy - 14], [cx - 20, cy - 4], [cx - 30, cy + 18], [cx - 24, cy + 22], [cx - 12, cy + 12], [cx - 4, cy + 6]]);
-  if (c.d.hair === 'ponytail') s.path([[cx - 12, cy - 12], [cx - 24, cy - 4], [cx - 30, cy + 8]], 4);
-  if (c.d.hair === 'puff' || c.d.hair === 'curly') s.ellipse(cx - 4, cy - 8, 22, 20);
-  if (c.d.hair === 'bun') s.ellipse(cx - 10, cy - 20, 7, 6);
-  leg(back, true);
-  armDraw(armsB[phase], true);
-  // 몸통
-  const tid = s.part(o.top === 'runvest' ? o.topColor2 ?? 0xffffff : o.topColor, { sr: 3, sb: 1, hl: 1 });
-  c.torsoIds.push(tid);
-  s.poly([[43, 58], [55, 58], [58, 81], [43, 81]]);
-  if (o.top === 'runvest') { s.part(o.topColor, { sr: 2, sb: 1, hl: 1 }); s.poly([[43, 60], [49, 60], [49, 81], [43, 81]]); s.part(0xd9ff5a, { flat: true }); s.rect(43, 70, 6, 2); }
-  if (o.top === 'runjacket') { s.part(0xd9ff5a, { flat: true }); s.rect(43, 72, 15, 2); }
-  if (o.backpack) { s.part(o.backpack, { sr: 2, sb: 1, hl: 1 }); s.poly([[36, 60], [44, 60], [44, 78], [36, 78]]); }
-  s.part(B, { sr: 2, sb: 1, hl: 1 }); s.rect(43, 78, 16, 6);
-  leg(front, false);
-  // 머리
-  s.part(c.skin, SKIN_O); s.rect(47, 52, 7, 8);
-  const fid = headShape(c, cx, cy, true);
-  c.faces.push({ id: fid, cx, cy, face: 'smile', side: true });
-  // 앞머리/옆머리: 뒤통수 쪽을 덮음
-  const id = s.part(c.d.hair === 'buzz' ? mix(c.hc, c.skin, 0.25) : c.hc, HF); c.hairIds.push(id);
-  const bald = c.d.hair === 'buzz';
-  s.ellipse(cx - 2, cy - 3, 19, 19.5, (x, y) => y <= cy - 11 || (x <= cx - 5 + Math.max(0, cy - 4 - y) * 0.4 && y <= cy + (bald ? -4 : 8)));
-  if (!bald) s.poly([[cx + 2, cy - 17], [cx + 16, cy - 11], [cx + 15, cy - 6], [cx + 10, cy - 9], [cx + 6, cy - 6], [cx + 2, cy - 10]]);
-  if (c.d.hair === 'messy') { s.poly([[cx - 8, cy - 20], [cx - 2, cy - 28], [cx + 2, cy - 20]]); s.poly([[cx + 2, cy - 20], [cx + 10, cy - 26], [cx + 10, cy - 17]]); }
-  if (c.d.hair === 'fluffy') fluff(c, cx - 2, cy, 8);
-  if (c.d.hair === 'twists') twists(c, cx - 3, cy, true);
-  c.acc.forEach(() => undefined);
-  accHead(c, cx - 1, cy, false);
-  armDraw(armsF[phase], false);
+  const arm = (pts0: P[], dark: boolean) => {
+    const pts = Y(pts0);
+    const k = (col: Color) => (dark ? shade(col, 0.78) : col);
+    s.part(k(c.skin), { sr: 1, sb: 1, hl: 1 });
+    s.path(pts, 3.2);
+    s.part(k(sv.col), { sr: 1, sb: 1, hl: 1 });
+    const long = sv.len > 10;
+    const end: P = long ? [pts[1][0] + (pts[2][0] - pts[1][0]) * 0.6, pts[1][1] + (pts[2][1] - pts[1][1]) * 0.6] : [pts[0][0] + (pts[1][0] - pts[0][0]) * 0.6, pts[0][1] + (pts[1][1] - pts[0][1]) * 0.6];
+    s.path(long ? [pts[0], pts[1], end] : [pts[0], end], 4);
+    s.part(k(c.skin), { sr: 1, sb: 1, hl: 0 });
+    const [hx, hy] = pts[2];
+    s.ellipse(hx, hy, 3.3, 3.3);
+  };
+  const hx = 51, hy = 40 + bob;
+  const hair = d.hair;
+  const longHair = ['wavy', 'long', 'braid', 'bob'].includes(hair);
+  const bigHair = ['puff', 'curly', 'fluffy', 'twists', 'locs'].includes(hair);
+  // 뒤로 흩날리는 긴 머리 (몸 뒤)
+  if (longHair) {
+    const id = s.part(c.hc, HB); c.hairIds.push(id);
+    const len = hair === 'bob' ? 0.35 : 1;
+    s.poly([[hx - 2, hy - 16], [hx - 14, hy - 12], [hx - 20, hy + 2], [hx - 22 - sway, hy + 8 + 26 * len], [hx - 15 - sway, hy + 12 + 28 * len], [hx - 7, hy + 14 + 18 * len], [hx - 3, hy + 6]]);
+    for (const dx of [-12, -16]) for (let t = 0; t < 22 * len; t++) s.dot(hx + dx - Math.round(t * 0.2) - (t > 10 ? sway : 0), hy + 4 + t, shade(c.hc, 0.75), id);
+  }
+  if (hair === 'ponytail') { const id = s.part(c.hc, HB); c.hairIds.push(id); s.path([[hx - 10, hy - 14], [hx - 22, hy - 8 - sway], [hx - 28, hy + 4 - sway]], 4.6); s.part(o.accColor ?? 0xe0483e, { flat: true }); s.rect(hx - 12, hy - 16, 3, 4); }
+  if (hair === 'pigtails') { const id = s.part(c.hc, HB); c.hairIds.push(id); s.path([[hx - 10, hy - 6], [hx - 18, hy + 4 - sway], [hx - 20, hy + 14]], 4); }
+  if (bigHair) { const id = s.part(c.hc, HB); c.hairIds.push(id); s.ellipse(hx - 4, hy - 5, 21, 20); }
+  leg(farLeg, true);
+  arm(farArm, true);
+  // 몸통 (옆으로 본 좁은 몸, 살짝 앞으로)
+  const top = o.top === 'runvest' ? o.topColor2 ?? 0xffffff : o.topColor;
+  const tid = s.part(top, { sr: 3, sb: 1, hl: 1 }); c.torsoIds.push(tid);
+  s.poly(Y([[44, 57], [56, 57], [58, 70], [57, 81], [42, 81], [42, 66]]));
+  if (o.top === 'runvest') { s.part(o.topColor, { sr: 2, sb: 1, hl: 1 }); s.poly(Y([[46, 58], [56, 58], [58, 70], [57, 81], [46, 81]])); s.part(0xffffff, { flat: true }); s.rect(46, 71 + bob, 11, 2); }
+  if (o.top === 'runjacket') { s.part(shade(o.topColor, 0.8), { flat: true }); s.rect(55, 59 + bob, 1, 21); s.part(0xd9ff5a, { flat: true }); s.rect(42, 72 + bob, 16, 2); }
+  if (o.backpack) { s.part(o.backpack, { sr: 2, sb: 1, hl: 1 }); s.poly(Y([[35, 59], [43, 59], [43, 77], [35, 77]])); }
+  // 허리
+  s.part(B, { sr: 2, sb: 1, hl: 1 }); s.poly(Y([[42, 77], [57, 77], [58, 84], [42, 84]]));
+  leg(nearLeg, false);
+  // 목
+  s.part(c.skin, SKIN_O); s.rect(hx - 5, hy + 11, 8, 9);
+  // 옆얼굴
+  const fid = headShape(c, hx, hy, true);
+  c.faces.push({ id: fid, cx: hx, cy: hy, face: 'open', side: true });
+  // 머리: 정수리·뒤통수 + 앞머리 (짧은 머리는 귀가 보이게)
+  const hid = s.part(c.hc, HF); c.hairIds.push(hid);
+  const coverBack = longHair || bigHair || ['ponytail', 'pigtails', 'bun', 'braid'].includes(hair);
+  // 이마 위에서 귀 뒤로 비스듬히 내려가는 머리선 (옆에서 본 두상)
+  s.ellipse(hx - 2, hy - 3, 18.5, 18.5, (x, y) => y <= hy - 12 || (x <= hx + 3 - (y - hy + 12) * 0.45 - (coverBack ? 0 : 4) && y <= hy + (coverBack ? 14 : 4)));
+  // 귀 앞 구레나룻
+  if (!coverBack) { s.rect(hx - 1, hy - 6, 2, 6); }
+  if (hair !== 'buzz' && hair !== 'slick') {
+    // 이마로 내려온 앞머리
+    const curly = bigHair;
+    s.poly([[hx - 4, hy - 18], [hx + 9, hy - 17], [hx + 15, hy - 12], [hx + 16, hy - 5], [hx + 12, hy - 6 + (curly ? -1 : 0)], [hx + 8, hy - 4], [hx + 4, hy - 7], [hx, hy - 6]]);
+    for (const x of [hx + 5, hx + 10]) for (let t = 0; t < 4; t++) s.dot(x, hy - 9 + t, shade(c.hc, 0.72), hid);
+  } else {
+    s.poly([[hx - 4, hy - 18], [hx + 9, hy - 17], [hx + 15, hy - 12], [hx + 9, hy - 13], [hx, hy - 12]]);
+  }
+  if (bigHair) { s.part(c.hc, HF); for (let k = 0; k < 6; k++) s.ellipse(hx - 14 + k * 4, hy - 19 + (k % 2), 4, 4); }
+  if (hair === 'messy' || hair === 'short') { s.part(c.hc, HF); for (const [x, h] of [[-10, 4], [-4, 5], [3, 4]]) s.poly([[hx + x - 3, hy - 17], [hx + x - 2, hy - 18 - h], [hx + x + 3, hy - 17]]); }
+  if (hair === 'bun') { s.part(c.hc, HF); s.ellipse(hx - 13, hy - 15, 7, 6); }
+  if (longHair) {
+    // 귀를 덮고 어깨로 흘러내리는 옆머리
+    s.part(c.hc, HF);
+    s.poly([[hx - 8, hy - 10], [hx - 1, hy - 8], [hx, hy + 6], [hx - 3, hy + 14], [hx - 9, hy + 12]]);
+  }
+  // 모자: 옆에서 본 돔 + 앞쪽 챙
+  if (c.acc.includes('cap')) {
+    const col = o.accColor ?? 0xe0483e;
+    s.part(col, { sr: 3, sb: 1, hl: 1 });
+    s.ellipse(hx - 1, hy - 7, 19, 15, (_x, y) => y <= hy - 7);
+    s.part(shade(col, 0.8), { sr: 1, sb: 1, hl: 0 });
+    s.poly([[hx + 10, hy - 9], [hx + 26, hy - 7], [hx + 25, hy - 5], [hx + 10, hy - 6]]);
+    s.part(0xffffff, { flat: true }); s.rect(hx + 3, hy - 18, 4, 3);
+  }
+  for (const acc of c.acc) {
+    if (acc === 'headband') { s.part(o.accColor ?? 0xe0483e, { sr: 1, sb: 1, hl: 0 }); s.path([[hx - 17, hy - 6], [hx - 4, hy - 17], [hx + 12, hy - 14]], 1.8); }
+    if (acc === 'sunglasses') { s.part(0x1b1626, { flat: true }); s.rect(hx + 5, hy - 3, 8, 4); s.rect(hx - 3, hy - 2, 9, 1); }
+  }
+  arm(nearArm, false);
 }
 
 // ---------------- 엎드려 눕기(온돌) ----------------
-function drawLie(c: Ctx, kick: number, face: Face) {
+function drawLie(c: Ctx, kick: number, face: Face, hand?: 'hold' | 'mouth') {
   const s = c.s, o = c.o;
   const T = o.topColor, B = o.bottomColor;
   const legC = ['jeans', 'pants', 'baggy', 'baji'].includes(o.bottom) ? B : c.skin;
@@ -1181,23 +1326,46 @@ function drawLie(c: Ctx, kick: number, face: Face) {
   shin(shins2[kick], true);
   s.part(B, { sr: 2, sb: 2, hl: 1 }); s.poly([[62, 88], [80, 90], [84, 101], [62, 102]]);
   shin(shins[kick], false);
+  // 허리~엉덩이 (바닥에 닿은 아랫몸)
   const tid = s.part(T, { sr: 2, sb: 2, hl: 1 }); c.torsoIds.push(tid);
-  s.poly([[38, 88], [66, 87], [67, 102], [38, 103]]);
-  // 머리 (턱 괴기)
-  const cx = 32, cy = 70;
-  const hair = c.d.hair === 'wavy' || c.d.hair === 'long' ? 'bob' : c.d.hair;
+  s.poly([[44, 91], [66, 88], [67, 102], [44, 103]]);
+  // 팔꿈치로 상체를 세우고 턱을 괸 자세: 머리는 어깨 위로, 목이 보이게
+  const cx = 32, cy = 66;
+  const hair = c.d.hair;
   backMass(c, cx, cy, hair);
-  s.part(c.skin, SKIN_O); s.rect(28, 82, 9, 6);
+  // 위로 세운 가슴·어깨 (뒷머리 아래쪽을 덮어 어깨선이 드러남)
+  const sv = sleeveInfo(o);
+  const cid = s.part(T, { sr: 2, sb: 1, hl: 1 }); c.torsoIds.push(cid);
+  s.poly([[21, 84], [45, 84], [50, 103], [17, 103]]);
+  s.part(shade(T, 0.85), { flat: true }); s.rect(44, 86, 2, 16);
+  // 목
+  s.part(c.skin, SKIN_O); s.rect(28, 80, 9, 6);
+  s.part(shade(c.skin, 0.86), { flat: true }); s.rect(28, 84, 9, 1);
   const fid = headShape(c, cx, cy);
   c.faces.push({ id: fid, cx, cy, face, side: false });
   hairFrontStyle(c, cx, cy, hair);
   accHead(c, cx, cy, false);
-  // 턱 아래로 모은 손
-  const sv = sleeveInfo(o);
+  // 가슴 밑에 받친 베개
+  s.part(0xfff4e6, { sr: 2, sb: 2, hl: 1 });
+  s.poly([[10, 93], [52, 92], [55, 104], [7, 105]]);
+  s.part(0xf2a7b8, { flat: true }); s.rect(9, 99, 45, 1); s.rect(9, 101, 45, 1);
+  // 위팔 (어깨 → 베개 위 팔꿈치)
+  s.part(sv.col, { sr: 1, sb: 1, hl: 1 });
+  s.path([[22, 87], [16, 96]], 3.8); s.path([[44, 87], [48, 96]], 3.8);
   s.part(sv.len > 10 ? sv.col : c.skin, { sr: 1, sb: 1, hl: 1 });
-  s.path([[18, 101], [24, 92]], 3.4); s.path([[46, 101], [40, 92]], 3.4);
+  if (!hand) {
+    // 쉴 때: 두 팔을 포개어 베개 위에, 그 위에 턱을 살짝 얹음
+    s.path([[16, 96], [38, 90]], 3.4); s.path([[48, 96], [27, 90]], 3.4);
+    s.part(c.skin, { sr: 1, sb: 1, hl: 0 });
+    s.ellipse(39, 89, 3.4, 3.2); s.ellipse(26, 89, 3.4, 3.2);
+    return;
+  }
+  // 음식을 앞으로 들기 / 입으로 가져가기 (다른 손은 베개 위)
+  const hp: P[] = hand === 'hold' ? [[16, 96], [8, 90]] : [[16, 96], [28, 80]];
+  s.path(hp, 3.4); s.path([[48, 96], [32, 91]], 3.4);
   s.part(c.skin, { sr: 1, sb: 1, hl: 0 });
-  s.ellipse(25, 88, 3.6, 3.6); s.ellipse(39, 88, 3.6, 3.6);
+  const [hx0, hy0] = hp[1];
+  s.ellipse(hx0, hy0, 3.6, 3.6); s.ellipse(31, 90, 3.4, 3.2);
 }
 
 // ---------------- 메인 렌더 ----------------
@@ -1244,14 +1412,14 @@ export function renderPose(d: CharDef, poseName: string, outfit?: Outfit): Pixel
     return toCanvas(s);
   };
 
-  if (pose.view === 'lie') { drawLie(c, pose.kick ?? 0, pose.face); pattern(); return finish(); }
+  if (pose.view === 'lie') { drawLie(c, pose.kick ?? 0, pose.face, pose.lieHand); pattern(); return finish(); }
   if (pose.view === 'side') { drawSide(c, pose.run ?? 0); pattern(); return finish(); }
 
   const sit = pose.legs === 'sit';
   const up = (pose.dy ?? 0) * 2 + (sit ? 12 : 0);
   const ty = 57 + up, cx = FACE_CX, cy = FACE_CY + up;
   const back = pose.view === 'back';
-  const frontArms: Arm[] = ['mouth', 'hold', 'fwd', 'v', 'chin', 'hip'];
+  const frontArms: Arm[] = ['mouth', 'hold', 'fwd', 'v', 'chin', 'hip', 'brow', 'up'];
   const shL = 38, shR = 58, shY = ty + 5;
 
   if (!back) backMass(c, cx, cy, d.hair);
@@ -1299,10 +1467,11 @@ export function renderPose(d: CharDef, poseName: string, outfit?: Outfit): Pixel
 }
 
 // 캐릭터 한 명의 포즈 시트를 굽고 애니메이션을 등록 (only: 일부 프레임만)
-export function bakeCharacter(scene: Phaser.Scene, d: CharDef, outfit?: Outfit, key?: string, only?: string[]): string {
-  const k = key ?? `ch_${d.id}`;
+// hd: 크게 보이는 캐릭터는 Scale2x로 2배 해상도로 다듬어 굽는다 (윤곽 계단이 둥글게, 픽셀이 더 촘촘하게)
+export function bakeCharacter(scene: Phaser.Scene, d: CharDef, outfit?: Outfit, key?: string, only?: string[], hd = false): string {
+  const k = key ?? `ch_${d.id}${hd ? '_hd' : ''}`;
   const names = only ?? Object.keys(POSES);
-  const frames = names.map((name) => ({ name, pc: renderPose(d, name, outfit) }));
+  const frames = names.map((name) => ({ name, pc: hd ? scale2x(renderPose(d, name, outfit)) : renderPose(d, name, outfit) }));
   registerFrames(scene, k, frames);
   const anim = (name: string, fr: string[], rate: number, repeat = -1) => {
     const ak = `${k}:${name}`;
@@ -1319,6 +1488,7 @@ export function bakeCharacter(scene: Phaser.Scene, d: CharDef, outfit?: Outfit, 
   anim('eat', ['eat0', 'eat1'], 3);
   anim('sitEat', ['sitEat0', 'sitEat1'], 3);
   anim('sit', ['sit0', 'sit0', 'sit1', 'sit1'], 3);
+  anim('sitLean', ['sitLean', 'sitLean', 'sitLean1', 'sitLean1', 'sitLean', 'sitLean1'], 2);
   anim('focus', ['focus0', 'focus1'], 6);
   anim('dance', ['dance0', 'dance1', 'dance2', 'dance3'], 4);
   anim('lie', ['lie0', 'lie1'], 3);

@@ -91,6 +91,12 @@ export const sfx = {
   typing: () => tone(N(96 + Math.floor(Math.random() * 4)), 0.02, 'square', 0.04),
   plane: () => tone(120, 2.5, 'noise', 0.08),
   hit: () => tone(N(91), 0.05, 'square', 0.12),
+  snip: () => { tone(4200, 0.03, 'noise', 0.22); tone(2600, 0.04, 'noise', 0.16, 0.05); },
+  dryer: () => tone(500, 1.1, 'noise', 0.07),
+  // 냠: 짧은 바삭 소리 + 낮은 톡
+  munch: () => { tone(1800, 0.05, 'noise', 0.12); tone(N(64), 0.06, 'triangle', 0.18, 0.03, N(58)); },
+  // 꿀꺽
+  gulp: () => tone(N(55), 0.12, 'sine', 0.3, 0, N(70)),
 };
 
 // ---------------- BGM 시퀀서 ----------------

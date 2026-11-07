@@ -4,9 +4,9 @@ import { BaseScene, item } from '../core/BaseScene';
 import { DialogBox, Hotbar, floatText, itemName, W, H, ZOOM } from '../core/ui';
 import { sfx } from '../core/audio';
 import { hearts, sparkles } from '../core/fx';
-import { CAST, NPC, OUTFITS, fitGender } from '../art/cast';
-import { shoeTex, beddingTex, eggTex } from '../art/props';
-import type { Outfit } from '../art/characters';
+import { CAST, NPC, OUTFITS, fitGender, pickCrew } from '../art/cast';
+import { shoeTex, beddingTex, bigEggTex, peeledEggTex } from '../art/props';
+import { handPos, type Outfit } from '../art/characters';
 import type { Timing } from '../core/widgets';
 
 // ---------------- #07 한옥 신발 벗기 ----------------
@@ -29,8 +29,9 @@ export class HanokShoes extends BaseScene {
     this.bg('hanok_ext');
     this.addHud();
     const hero = this.char('hana', -40, 312, { scale: 2, outfit: OUTFITS.hanaLv1 });
-    const f1 = this.char('amara', -100, 318, { scale: 2 });
-    const f2 = this.char('leo', -160, 322, { scale: 2 });
+    const [, idA, idB] = pickCrew(['hana', 'amara', 'leo']);
+    const f1 = this.char(idA, -100, 318, { scale: 2 });
+    const f2 = this.char(idB, -160, 322, { scale: 2 });
     await this.reveal();
     const box = DialogBox.mission(this, '실내에서 신발 벗기', 'Take off your shoes indoors');
     this.walk(f1, 150, 318, 90);
@@ -70,7 +71,7 @@ export class HanokShoes extends BaseScene {
     this.walk(hero, 320, 240, 70).then(() => this.tweens.add({ targets: hero, alpha: 0, scale: 0.9, duration: 400 }));
 
     // 친구들도 따라서
-    const friends: [Phaser.GameObjects.Sprite, string, number][] = [[f1, 'amara', 330], [f2, 'leo', 278]];
+    const friends: [Phaser.GameObjects.Sprite, string, number][] = [[f1, idA, 330], [f2, idB, 278]];
     for (const [s, id, x] of friends) {
       const def = CAST[id];
       await this.walk(s, x, s.y, 110);
@@ -94,6 +95,7 @@ export class HanokShoes extends BaseScene {
 }
 
 // ---------------- #08 온돌에 누워 전통 간식 먹기 ----------------
+// 콘티 #1: 셋이 마루에 엎드려 간식을 먹음 → 크게(×3) 배치하고 간식은 입 앞에서 한 입씩 베어 먹는다
 export class HanokOndol extends BaseScene {
   constructor() { super('HanokOndol'); }
 
@@ -107,17 +109,18 @@ export class HanokOndol extends BaseScene {
         this.tweens.add({ targets: p, y: 230, x: p.x + Phaser.Math.Between(-10, 10), alpha: 0, duration: 1800, onComplete: () => p.destroy() });
       },
     });
-    const ids = ['hana', 'amara', 'leo'];
-    const xs = [150, 320, 490];
+    const ids = pickCrew(['hana', 'amara', 'leo']);
+    const xs = [116, 320, 524];
+    const LY = 318;
     const bedCols: [number, number][] = [[0xf08ab0, 0xffffff], [0x5a9ae8, 0xffe066], [0x6cbf5a, 0xff8ab0]];
-    const beds = xs.map((x, i) => this.add.image(x + 6, 298, beddingTex(this, bedCols[i][0], bedCols[i][1])).setOrigin(0.5, 1).setDepth(250).setScale(0, 1));
-    const crew = ids.map((id, i) => this.char(id, xs[i] + 200, 284, { scale: 2, outfit: id === 'hana' ? { ...OUTFITS.hanaLv1, shoes: 0xf7f7f7 } : { ...CAST[id].outfit, shoes: 0xf7f7f7 } }));
+    const beds = xs.map((x, i) => this.add.image(x + 8, LY + 8, beddingTex(this, bedCols[i][0], bedCols[i][1])).setOrigin(0.5, 1).setDepth(250).setScale(0, 1.4));
+    const crew = ids.map((id, i) => this.char(id, xs[i] + 260, LY - 6, { scale: 3, outfit: id === 'hana' ? { ...OUTFITS.hanaLv1, shoes: 0xf7f7f7 } : { ...CAST[id].outfit, shoes: 0xf7f7f7 } }));
     await this.reveal();
     // 이불 펴기
-    beds.forEach((b, i) => this.tweens.add({ targets: b, scaleX: 1, delay: i * 200, duration: 400, ease: 'Back.Out', onStart: () => sfx.whoosh() }));
-    await Promise.all(crew.map((s, i) => this.walk(s, xs[i], 284, 140)));
-    // 베개 쪽(오른쪽)에 머리가 오도록 눕기
-    crew.forEach((s) => { this.play(s, 'lie'); s.setFlipX(true).setDepth(300); s.y = 292; });
+    beds.forEach((b, i) => this.tweens.add({ targets: b, scaleX: 1.4, delay: i * 200, duration: 400, ease: 'Back.Out', onStart: () => sfx.whoosh() }));
+    await Promise.all(crew.map((s, i) => this.walk(s, xs[i], LY - 6, 170)));
+    // 베개 쪽(오른쪽)에 머리가 오도록 엎드림
+    crew.forEach((s, i) => { this.time.delayedCall(i * 210, () => this.play(s, 'lie')); s.setFlipX(true).setDepth(300); s.y = LY; this.puff(s.x, s.y, 3); });
     this.lead = crew[0];
     crew.forEach((s, i) => this.emote(s, '♪', 300 + i * 200));
     sfx.pop();
@@ -132,15 +135,23 @@ export class HanokOndol extends BaseScene {
       const s = crew[n++];
       const ref = item(this, id);
       const from = bar.slotWorldPos(id);
-      const it = this.add.image(from.x, from.y, ref.tex, ref.frame).setDepth(400).setScale(0.45);
-      await new Promise<void>((ok) => this.tweens.add({ targets: it, x: s.x + 34, y: s.y - 20, scale: 0.32, duration: 380, ease: 'Quad.Out', onComplete: () => ok() }));
+      const it = this.add.image(from.x, from.y, ref.tex, ref.frame).setDepth(400).setScale(0.5);
+      const k = 26 / Math.max(it.width, it.height);
+      // 엎드린 사람의 앞으로 내민 손으로 날아감
+      s.anims.stop();
+      s.setFrame('lieHold');
+      const h = handPos('lieHold')!;
+      const mx = s.x - h[0] * this.tk(s), my = s.y + (h[1] - 3) * this.tk(s, true);
+      await new Promise<void>((ok) => this.tweens.add({ targets: it, x: mx, y: my, scale: k, duration: 380, ease: 'Quad.Out', onComplete: () => ok() }));
+      it.destroy();
       sfx.pop();
-      s.setFrame('lieEat');
-      this.time.delayedCall(600, () => this.play(s, 'lie'));
-      floatText(this, s.x + 10, s.y - 52, itemName(id) + '!', '#fff27a', 10);
-      hearts(this, s.x + 16, s.y - 50, 3);
+      floatText(this, s.x, s.y - 80, itemName(id) + '!', '#fff27a', 11);
+      // 엎드린 채로 손에 들고 입으로 가져가 한 입씩 (베어 문 자국이 늘고 부스러기가 떨어짐)
+      await this.eat(s, id, { size: 26, bites: 3 });
+      this.play(s, 'lie');
+      hearts(this, s.x + 20, s.y - 70, 3);
       this.emote(s, '♥');
-      await this.award(50, s.x, s.y - 100);
+      await this.award(50, s.x, s.y - 120);
     }, false, {
       wrong: {
         chips: ['과자는 편의점 간식이야', 'Chips are a convenience-store snack.'],
@@ -162,26 +173,9 @@ export class HanokOndol extends BaseScene {
 }
 
 // ---------------- #09 찜질방: 식혜와 맥반석 계란 ----------------
+// 콘티 #09: 넷이 양머리 수건을 쓰고 평상에 책상다리로 앉아, 한 손엔 식혜 한 손엔 계란
 export class Jjimjil extends BaseScene {
   constructor() { super('Jjimjil'); }
-
-  // 이마에 계란 톡! (찜질방 국룰)
-  async eggBonk(s: Phaser.GameObjects.Sprite, r: Timing) {
-    const egg = this.add.image(s.x - 16, s.y - 30, eggTex(this)).setDepth(900);
-    await new Promise<void>((ok) => this.tweens.add({ targets: egg, x: s.x, y: s.y - 82, duration: 300, ease: 'Quad.Out', onComplete: () => ok() }));
-    sfx.hit();
-    this.cameras.main.shake(r === 'miss' ? 220 : 80, r === 'miss' ? 0.006 : 0.002);
-    s.anims.stop();
-    s.setFrame(r === 'miss' ? 'surprise' : 'sit0');
-    const label = r === 'miss' ? '아야!  Ouch!' : '톡!  Crack!';
-    floatText(this, s.x + 24, s.y - 100, label, r === 'miss' ? '#ff8a8a' : '#ffd23f', 12);
-    if (r === 'miss') this.emote(s, '💧'); else sparkles(this, s.x, s.y - 82, 8, [0xffffff, 0xffe066], 10);
-    await this.wait(500);
-    this.tweens.add({ targets: egg, x: s.x + 16, y: s.y - 30, duration: 250, onComplete: () => egg.destroy() });
-    this.play(s, 'sitEat');
-    this.emote(s, '♪');
-    await this.wait(300);
-  }
 
   async create() {
     this.bg('jjimjil');
@@ -189,13 +183,17 @@ export class Jjimjil extends BaseScene {
     // 가마 불빛 일렁임
     const glow = this.add.rectangle(0, 0, W, H, 0xff8a3a, 0.08).setOrigin(0).setDepth(1000).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({ targets: glow, alpha: 0.16, yoyo: true, repeat: -1, duration: 700 });
-    // 콘티 #09: 소피아·(주인공)·엠마·코피가 양머리 수건을 쓰고 나란히
-    const ids = ['sofia', 'hana', 'emma', 'kofi'];
-    const xs = [190, 280, 370, 460];
+    // 콘티 #09: 소피아·(주인공)·엠마·코피
+    const ids = pickCrew(['sofia', 'hana', 'emma', 'kofi']);
+    const xs = [112, 248, 392, 528];
+    const SY = 244;
     const crew = ids.map((id, i) => {
       const base = id === 'hana' ? CAST.hana : CAST[id];
-      const s = this.char(id, xs[i], 262, { scale: 2, outfit: OUTFITS.jjimjil(), key: `jj_${id}`, def: base });
-      this.play(s, 'sit');
+      // 평상 위에 책상다리로 크게 (콘티처럼 화면을 채움)
+      const s = this.char(id, xs[i], SY, { scale: 4, outfit: OUTFITS.jjimjil(), key: `jj_${id}`, def: base });
+      // 둘은 손 짚고 뒤로 기대고, 둘은 양반다리로 바르게 (박자도 서로 다르게)
+      this.time.delayedCall(i * 230, () => this.play(s, i % 2 ? 'sitLean' : 'sit'));
+      if (i % 2) s.setAngle(-2);
       return s;
     });
     this.lead = crew[1];
@@ -206,23 +204,34 @@ export class Jjimjil extends BaseScene {
     await this.wait(500);
     this.say(crew[1], '찜질방에 왔으면 이 두 가지는 꼭 먹어야 해!', 'You have to try these two here!', 2400);
     await this.wait(700);
+    const cups: Phaser.GameObjects.Image[] = [];
+    let plate = undefined as Phaser.GameObjects.Image | undefined;
     const bar = new Hotbar(this, ['icedcoffee', 'sikhye', 'chips', 'eggs', 'soda', 'icecream'].map((id) => item(this, id)), 0);
     await this.choose(bar, ['sikhye', 'eggs'], async (id) => {
       sfx.sparkle();
       const ref = item(this, id);
       if (id === 'eggs') {
-        const plate = this.add.image(325, 272, ref.tex, ref.frame).setDepth(400).setScale(0);
-        this.tweens.add({ targets: plate, scale: 0.45, duration: 300, ease: 'Back.Out' });
+        // 평상 가운데 계란 바구니
+        plate = this.add.image(320, SY + 2, ref.tex, ref.frame).setDepth(SY + 10).setScale(0);
+        this.tweens.add({ targets: plate, scale: 1, duration: 300, ease: 'Back.Out' });
+        floatText(this, 320, 190, itemName(id) + '!', '#fff27a', 12);
+        await this.wait(700);
       } else {
-        crew.forEach((s, i) => {
+        // 컵이 각자 손으로 날아오고, 다 같이 쭈욱 마신 뒤 왼손에 들고 있음
+        floatText(this, 320, 150, itemName(id) + '!', '#fff27a', 12);
+        await Promise.all(crew.map(async (s, i) => {
           const from = bar.slotWorldPos(id);
-          const it = this.add.image(from.x, from.y, ref.tex, ref.frame).setDepth(500).setScale(0.3);
-          this.tweens.add({ targets: it, x: s.x + 14, y: s.y - 34, delay: i * 90, duration: 400, ease: 'Quad.Out' });
-          this.time.delayedCall(450 + i * 90, () => { this.play(s, 'sitEat'); hearts(this, s.x, s.y - 90, 2); });
-        });
+          const it = this.add.image(from.x, from.y, ref.tex, ref.frame).setDepth(500).setScale(0.4);
+          await this.wait(i * 110);
+          await new Promise<void>((ok) => this.tweens.add({ targets: it, x: s.x + 8, y: s.y - 70, duration: 380, ease: 'Quad.Out', onComplete: () => ok() }));
+          it.destroy();
+          const cup = await this.eat(s, id, { drink: true, sit: true, bites: 2, size: 28, keep: true });
+          cup.destroy();
+          cups[i] = this.hold(s, 'sikhye', 28, true);
+          this.play(s, 'sit');
+          s.setAngle(0);
+        }));
       }
-      floatText(this, 320, 190, itemName(id) + '!', '#fff27a', 12);
-      await this.wait(700);
       await this.award(60, 320, 150);
     }, false, {
       wrong: {
@@ -233,13 +242,60 @@ export class Jjimjil extends BaseScene {
       },
     });
     bar.hide();
-    // 계란 이마 깨기 미니게임
+    // 계란 이마 깨기: 넷이 동시에 계란을 들고 → 머리 위로 → 하나 둘 셋에 이마로 톡!
     await this.wait(300);
-    this.say(crew[1], '계란은 이마로 깨 먹는 거래!', 'You crack the egg on your forehead!', 1800);
-    await this.wait(600);
-    const r = await this.timing('이마로 계란 톡!', 'Crack it on your forehead!');
-    await this.eggBonk(crew[1], r);
-    crew.forEach((s, i) => { if (i !== 1) this.time.delayedCall(i * 120, () => { this.play(s, 'sitEat'); }); this.emote(s, '♥', i * 120); });
+
+    const egg = bigEggTex(this);
+    const eggs = await Promise.all(crew.map(async (s, i) => {
+      await this.wait(i * 120);
+      // 바구니에서 계란 하나씩 집어 오른손으로
+      const fly = this.add.image(plate?.x ?? 320, (plate?.y ?? SY) - 6, egg).setDepth(900).setScale(1.2);
+      s.anims.stop();
+      s.setFrame('sitEat1');
+      const h = handPos('sitEat1')!;
+      await new Promise<void>((ok) => this.tweens.add({ targets: fly, x: s.x + (h[0] + 3) * this.tk(s), y: s.y + (h[1] - 3) * this.tk(s, true), duration: 360, ease: 'Quad.Out', onComplete: () => ok() }));
+      fly.destroy();
+      sfx.pop();
+      return this.hold(s, { tex: egg }, 26);
+    }));
+    this.say(crew[1], '계란은 이마로 깨 먹는 거래! 다 같이!', 'Crack it on your forehead! All together!', 2000);
+    await this.wait(900);
+    // 머리 위로 치켜들고 준비 (조마조마 흔들)
+    crew.forEach((s) => s.setFrame('sitRaise'));
+    const ready = crew.map((s, i) => this.tweens.add({ targets: s, angle: { from: -1.5, to: 1.5 }, yoyo: true, repeat: -1, duration: 140 + i * 15 }));
+    const r = await this.timing('다 같이 이마로 계란 톡!', 'Everyone, crack it on your forehead!');
+    ready.forEach((t) => t.stop());
+    crew.forEach((s) => s.setAngle(0));
+    // 하나 둘 셋, 톡!
+    sfx.hit();
+    this.time.delayedCall(60, () => sfx.hit());
+    this.cameras.main.shake(r === 'miss' ? 240 : 110, r === 'miss' ? 0.007 : 0.003);
+    crew.forEach((s, i) => {
+      const k = this.tk(s, true);
+      const fy = s.y + (42 - 110) * k; // 이마 높이 (앉은 자세)
+      const ouch = r === 'miss' && i === 1;
+      s.setFrame('sitBrow');
+      this.tweens.add({ targets: s, scaleY: s.scaleY * 0.94, scaleX: s.scaleX * 1.03, yoyo: true, duration: 80 });
+      // 껍질 조각이 튐
+      for (let k2 = 0; k2 < 7; k2++) {
+        const bit = this.add.image(s.x + 8, fy, 'px').setTint(Phaser.Utils.Array.GetRandom([0xa8622e, 0x7a4220, 0xdc9a5a])).setScale(2).setDepth(910);
+        this.tweens.add({ targets: bit, x: bit.x + Phaser.Math.Between(-26, 26), y: bit.y + Phaser.Math.Between(-18, 30), angle: 180, alpha: 0, duration: 600, ease: 'Quad.Out', onComplete: () => bit.destroy() });
+      }
+      sparkles(this, s.x + 6, fy, 6, [0xffffff, 0xffe066], 12);
+      floatText(this, s.x + 30, fy - 18, ouch ? '아야!  Ouch!' : '톡!', ouch ? '#ff8a8a' : '#ffd23f', 14);
+      if (ouch) this.emote(s, '💧');
+    });
+    await this.wait(550);
+    // 껍질 벗긴 계란으로 바뀌고, 한 입씩 (왼손엔 식혜)
+    eggs.forEach((e) => e.destroy());
+    crew.forEach((s) => s.setFrame('sitEat1'));
+    await this.wait(150);
+    await Promise.all(crew.map(async (s, i) => {
+      await this.wait(i * 140);
+      await this.eat(s, { tex: peeledEggTex(this) }, { sit: true, bites: 4, size: 26 });
+      s.setFrame('sitCheer');
+    }));
+    hearts(this, 320, 120, 6);
     await this.award(r === 'perfect' ? 80 : 50, 320, 150);
     await this.wait(900);
     box.destroy();
@@ -293,7 +349,7 @@ export class DressCode extends BaseScene {
       [70, 110, 530, 570].forEach((x) => this.char('guard', x, 262, { anim: 'idle' }));
     }
     this.addHud();
-    const ids = v.crew;
+    const ids = pickCrew(v.crew);
     const xs = [165, 270, 375, 480];
     const defs = ids.map((id) => (id === 'hana' ? { ...CAST.hana, outfit: OUTFITS.hanaLv1 } : CAST[id]));
     const crew = ids.map((id, i) => {

@@ -7,7 +7,7 @@ import { playMusic, sfx } from '../core/audio';
 import { director } from '../core/director';
 import { launchFirework, sparkles } from '../core/fx';
 import { glints, makeAmbientTextures, twinkle } from '../core/ambient';
-import { CAST, LINEUP, OUTFITS } from '../art/cast';
+import { CAST, LINEUP, OUTFITS, isHero } from '../art/cast';
 import { state } from '../core/state';
 
 // 야외 스크린 영역 (night.png 기준)
@@ -38,8 +38,8 @@ export class Ending extends BaseScene {
 
     // 관객: 뒷모습 9인
     const crew = LINEUP.map((id, i) => {
-      const def = id === 'hana' ? { ...CAST.hana, outfit: OUTFITS.hanaMax } : CAST[id];
-      const s = this.char(id, 100 + i * 55 + (i % 2) * 6, 352 - (i % 2) * 6, { scale: 2, def, key: `end_${id}` });
+      const def = isHero(id) ? { ...CAST.hana, outfit: OUTFITS.hanaMax } : CAST[id];
+      const s = this.char(id, Math.round(W / 2 + (i - (LINEUP.length - 1) / 2) * 62) + (i % 2) * 6, 352 - (i % 2) * 6, { scale: 2, def, key: `end_${id}` });
       s.setFrame('back0');
       return s;
     });
@@ -134,8 +134,8 @@ export class Outro extends BaseScene {
     this.cameras.main.centerOn(W / 2, worldH - H / 2);
     const groundY = worldH - 26;
     const crew = LINEUP.map((id, i) => {
-      const def = id === 'hana' ? { ...CAST.hana, outfit: state.maxed ? OUTFITS.hanaMax : OUTFITS.hanaLv3 } : CAST[id];
-      const s = this.char(id, 64 + i * 64, groundY + (i % 2) * 4, { scale: 2, def, key: `out_${id}` });
+      const def = isHero(id) ? { ...CAST.hana, outfit: state.maxed ? OUTFITS.hanaMax : OUTFITS.hanaLv3 } : CAST[id];
+      const s = this.char(id, Math.round(W / 2 + (i - (LINEUP.length - 1) / 2) * 72), groundY + (i % 2) * 4, { scale: 2, def, key: `out_${id}` });
       s.setFrame('back0');
       return s;
     });

@@ -25,6 +25,7 @@ export function speech(scene: Phaser.Scene, x: number, y: number, ko: string, en
   if (x + bx < 4) bx = 4 - Math.round(x);
   if (x + bx + w > W - 4) bx = W - 4 - w - Math.round(x);
   const by = -h - 5;
+  if (y + by < 4) c.y = Math.round(4 - by);
   const g = scene.add.graphics();
   lightPanel(g, bx, by, w, h);
   const tx = Phaser.Math.Clamp(0, bx + 8, bx + w - 8);
@@ -135,10 +136,13 @@ export function timingGame(scene: Phaser.Scene, ko: string, en: string): Promise
   return new Promise((resolve) => {
     const c = scene.add.container(W / 2, H - 50).setDepth(985);
     const g = scene.add.graphics();
-    panel(g, -134, -32, 268, 64);
-    g.fillStyle(PAL.acc); g.fillRoundedRect(-130, -26, 2, 52, 1);
-    const title = txt(scene, -122, -25, ko, { px: TYPE.body + 0.5, weight: 700, color: TXT });
-    const sub = txt(scene, -122 + title.width + 6, -25 + (title.height - 11) / 2 + 1, en, { px: TYPE.small + 0.5, weight: 500, color: EN });
+    const title = txt(scene, 0, -25, ko, { px: TYPE.body + 0.5, weight: 700, color: TXT });
+    const sub = txt(scene, 0, -25 + (title.height - 11) / 2 + 1, en, { px: TYPE.small + 0.5, weight: 500, color: EN });
+    const half = Math.min(W / 2 - 8, Math.max(134, Math.ceil((title.width + 6 + sub.width) / 2) + 14));
+    panel(g, -half, -32, half * 2, 64);
+    g.fillStyle(PAL.acc); g.fillRoundedRect(-half + 4, -26, 2, 52, 1);
+    title.setX(-half + 12);
+    sub.setX(-half + 12 + title.width + 6);
     const keyHint = txt(scene, 122, 14, director.auto ? '' : 'SPACE · TAP  ·  타이밍에 맞춰 눌러요', { px: TYPE.cap, weight: 700, color: ACC, spacing: 0.5 }).setOrigin(1, 0);
     // 게이지
     const bw = 236, bx = -118, by = -6;

@@ -256,6 +256,150 @@ export function ledCycle(scene: Phaser.Scene, r: R, depth = -70) {
   scene.time.addEvent({ delay: 500, loop: true, callback: () => { o.setFillStyle(cols[++i % cols.length]); o.setAlpha(0.08 + Math.random() * 0.1); } });
 }
 
+// ---------- 큰 움직임 (놀이기구·탈것) ----------
+
+// 회전하는 도트 대관람차: 바퀴와 살은 돌고, 곤돌라는 늘 아래로 매달린 채 원을 따라 돈다
+export function ferrisWheel(scene: Phaser.Scene, cx: number, cy: number, r: number, o: { cabins?: number; period?: number; depth?: number; legY?: number } = {}) {
+  const n = o.cabins ?? 10, depth = o.depth ?? -88, period = o.period ?? 26000;
+  const PINK = 0xf6a8cc, PINK_D = 0xd9789f, NAVY = 0x2a2350;
+  // 다리 (고정)
+  const legs = scene.add.graphics().setDepth(depth - 1);
+  const ly = o.legY ?? cy + r + 30;
+  for (const dx of [-32, 32]) {
+    legs.lineStyle(6, NAVY); legs.lineBetween(cx, cy, cx + dx, ly);
+    legs.lineStyle(4, PINK_D); legs.lineBetween(cx, cy, cx + dx, ly);
+  }
+  legs.lineStyle(3, PINK_D); legs.lineBetween(cx - 20, cy + r * 0.62, cx + 20, cy + r * 0.62);
+  // 바퀴 (회전)
+  const wheel = scene.add.graphics({ x: cx, y: cy }).setDepth(depth);
+  const spokes = 12;
+  for (let i = 0; i < spokes; i++) {
+    const a = (i / spokes) * Math.PI * 2;
+    wheel.lineStyle(2, PINK); wheel.lineBetween(0, 0, Math.cos(a) * r, Math.sin(a) * r);
+  }
+  wheel.lineStyle(5, NAVY, 0.9); wheel.strokeCircle(0, 0, r);
+  wheel.lineStyle(3, PINK); wheel.strokeCircle(0, 0, r);
+  wheel.lineStyle(1, 0xffffff, 0.6); wheel.strokeCircle(0, 0, r - 1);
+  wheel.lineStyle(2, PINK_D); wheel.strokeCircle(0, 0, r * 0.58);
+  for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; wheel.fillStyle(0xffe27a); wheel.fillCircle(Math.cos(a) * r, Math.sin(a) * r, 2); }
+  // 가운데 별 허브 (고정, 위에)
+  const hub = scene.add.graphics({ x: cx, y: cy }).setDepth(depth + 0.6);
+  hub.fillStyle(NAVY); hub.fillCircle(0, 0, 10);
+  hub.fillStyle(0xffd23f); hub.fillCircle(0, 0, 9);
+  hub.fillStyle(0x6fb0ff); hub.fillCircle(0, 0, 6);
+  hub.fillStyle(0xffe27a); hub.fillTriangle(0, -5, -4, 3, 4, 3); hub.fillTriangle(0, 5, -4, -2, 4, -2);
+  // 곤돌라
+  const cols = [0xf7a8c8, 0x7ec4ff, 0xffd86a, 0xb7e88a];
+  const cabins = Array.from({ length: n }, (_, i) => {
+    const c = scene.add.graphics().setDepth(depth + 0.5);
+    const col = cols[i % cols.length];
+    c.fillStyle(NAVY); c.fillRoundedRect(-8, -1, 16, 13, 4);
+    c.fillStyle(col); c.fillRoundedRect(-7, 0, 14, 11, 3);
+    c.fillStyle(0xdff2ff); c.fillRect(-5, 2, 10, 4);
+    c.fillStyle(0xffffff, 0.7); c.fillRect(-5, 2, 3, 1);
+    c.fillStyle(NAVY); c.fillRect(-1, -4, 2, 4);
+    return c;
+  });
+  const tick = () => {
+    const t = (scene.time.now % period) / period;
+    const base = t * Math.PI * 2;
+    wheel.rotation = base;
+    cabins.forEach((c, i) => {
+      const a = base + (i / n) * Math.PI * 2;
+      // 곤돌라는 흔들리며 아래로 매달림
+      c.setPosition(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r + 3));
+      c.rotation = Math.sin(scene.time.now / 500 + i) * 0.06;
+    });
+  };
+  tick();
+  scene.events.on('update', tick);
+  scene.events.once('shutdown', () => scene.events.off('update', tick));
+}
+
+// 배경 그림 일부를 잘라 앞쪽 레이어로 다시 깐다 (회전 놀이기구 앞에 있어야 할 가로등·차양 등)
+export function bgForeground(scene: Phaser.Scene, bgKey: string, poly: [number, number][], depth: number) {
+  const key = `${bgKey}_fg_${poly.length}_${poly[0].join('_')}`;
+  const src = scene.textures.get(bgKey).getSourceImage() as HTMLImageElement;
+  const k = src.height / H;
+  if (!scene.textures.exists(key)) {
+    const cv = document.createElement('canvas');
+    cv.width = src.width; cv.height = src.height;
+    const g = cv.getContext('2d')!;
+    g.beginPath();
+    poly.forEach(([x, y], i) => (i ? g.lineTo(x * k, y * k) : g.moveTo(x * k, y * k)));
+    g.closePath();
+    g.clip();
+    g.drawImage(src, 0, 0);
+    scene.textures.addCanvas(key, cv);
+  }
+  return scene.add.image(0, 0, key).setOrigin(0).setScale(1 / k).setDepth(depth);
+}
+
+// 배경의 한 부분(회전목마 말 등)을 잘라 위아래로 출렁이게
+export function bobPart(scene: Phaser.Scene, bgKey: string, rect: R, amp = 1, period = 700, delay = 0, depth = -86) {
+  const src = scene.textures.get(bgKey).getSourceImage() as HTMLImageElement;
+  const k = src.height / H;
+  const key = `${bgKey}_part_${rect.join('_')}`;
+  if (!scene.textures.exists(key)) {
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(rect[2] * k); cv.height = Math.round(rect[3] * k);
+    cv.getContext('2d')!.drawImage(src, rect[0] * k, rect[1] * k, rect[2] * k, rect[3] * k, 0, 0, cv.width, cv.height);
+    scene.textures.addCanvas(key, cv);
+  }
+  const im = scene.add.image(rect[0], rect[1], key).setOrigin(0).setScale(1 / k).setDepth(depth);
+  scene.tweens.add({ targets: im, y: rect[1] - amp, yoyo: true, repeat: -1, duration: period, delay, ease: 'Sine.InOut' });
+  return im;
+}
+
+// 줄지어 깜빡이는 전구 (회전목마 차양 등): 점들이 번갈아 켜지며 빙글 도는 느낌
+export function chaseLights(scene: Phaser.Scene, pts: [number, number][], colors = [0xfff3b0, 0xffd23f], every = 140, depth = -84) {
+  const dots = pts.map(([x, y], i) => scene.add.image(x, y, 'glow').setTint(colors[i % colors.length]).setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(6, 6).setDepth(depth));
+  let s = 0;
+  scene.time.addEvent({ delay: every, loop: true, callback: () => { s++; dots.forEach((d, i) => d.setAlpha((i + s) % 3 === 0 ? 1 : 0.25)); } });
+}
+
+// 수면 위를 천천히 지나가는 유람선
+export function ferry(scene: Phaser.Scene, y: number, xFrom: number, xTo: number, dur = 30000, depth = -88, scale = 1) {
+  const run = () => {
+    const b = scene.add.graphics({ x: xFrom, y }).setDepth(depth).setScale(scale);
+    b.fillStyle(0x1a1430); b.fillRect(-1, -9, 34, 11);
+    b.fillStyle(0xffffff); b.fillRect(0, -8, 32, 6); b.fillRect(6, -12, 18, 4);
+    b.fillStyle(0x3a7ad8); b.fillRect(0, -2, 32, 3); b.fillRect(8, -11, 2, 2); b.fillRect(13, -11, 2, 2); b.fillRect(18, -11, 2, 2);
+    b.fillStyle(0xffffff, 0.5); b.fillRect(-6, 2, 8, 1); b.fillRect(-12, 3, 6, 1);
+    scene.tweens.add({ targets: b, x: xTo, duration: dur, onComplete: () => b.destroy() });
+    scene.tweens.add({ targets: b, y: y + 1, yoyo: true, repeat: -1, duration: 700 });
+  };
+  run();
+  scene.time.addEvent({ delay: dur * 0.6, loop: true, callback: run });
+}
+
+// 활주로 위 비행기 이륙 (창밖)
+export function planeTakeoff(scene: Phaser.Scene, y: number, every = 9000, depth = -95) {
+  const run = () => {
+    const p = scene.add.graphics({ x: W + 30, y }).setDepth(depth);
+    p.fillStyle(0xffffff); p.fillRect(-14, -2, 28, 4); p.fillRect(-14, -3, 6, 1);
+    p.fillStyle(0xd8e2f4); p.fillRect(-2, 1, 10, 2); p.fillRect(-14, -6, 3, 4);
+    p.fillStyle(0x3a6ad8); p.fillRect(-12, -1, 22, 1);
+    p.fillStyle(0x6a7ab0); for (let i = -10; i < 10; i += 3) p.fillRect(i, -1, 1, 1);
+    scene.tweens.add({ targets: p, x: -40, duration: 7000, ease: 'Sine.In' });
+    scene.tweens.add({ targets: p, y: y - 60, angle: -8, delay: 2500, duration: 4500, ease: 'Quad.In', onComplete: () => p.destroy() });
+  };
+  scene.time.delayedCall(1500, run);
+  scene.time.addEvent({ delay: every, loop: true, callback: run });
+}
+
+// 분수 물줄기
+export function fountain(scene: Phaser.Scene, x: number, y: number, h = 18, perSec = 18, depth = 5) {
+  scene.time.addEvent({
+    delay: 1000 / perSec, loop: true, callback: () => {
+      const p = scene.add.image(x + rnd(-2, 2), y, 'px').setTint(pick([0xffffff, 0xbfe8ff, 0x8fd0ff])).setDepth(depth);
+      const vx = rnd(-14, 14);
+      scene.tweens.add({ targets: p, x: p.x + vx, duration: 900 });
+      scene.tweens.add({ targets: p, y: y - h, duration: 420, ease: 'Quad.Out', yoyo: true, onComplete: () => p.destroy() });
+    },
+  });
+}
+
 // ---------- 배경별 구성 ----------
 export function ambientFor(scene: Phaser.Scene, bg: string) {
   makeAmbientTextures(scene);
@@ -275,21 +419,20 @@ export function ambientFor(scene: Phaser.Scene, bg: string) {
       train(scene, 226, 8000, -84, 1);
       break;
     case 'map1':
-      glints(scene, [[0, 0, 40, H], [600, 0, 40, H], [0, 330, W, 30], [250, 60, 30, 260]], 14);
+      glints(scene, [[24, 140, 260, 44], [340, 124, 270, 70]], 14);
       cloudShadows(scene, 3);
       clouds(scene, 3, 10, 300, 5, 2.5, 0.85, 1.2);
       birds(scene, 20, 200, 7000, 9);
       break;
     case 'map2':
-      glints(scene, [[60, 20, 120, 120], [130, 140, 140, 120], [200, 250, 130, 110]], 14);
-      cloudShadows(scene, 3);
-      clouds(scene, 2, 10, 300, 5, 2.5, 0.8, 1.2);
-      birds(scene, 20, 200, 7000, 9);
+      glints(scene, [[0, 78, 280, 64], [360, 78, 280, 64]], 14);
+      fountain(scene, 318, 208, 16, 16, 3);
+      clouds(scene, 3, 4, 34, 5, -95);
+      birds(scene, 14, 40, 7000);
       break;
     case 'map3':
-      clouds(scene, 4, 10, 120, 5, -95);
-      twinkle(scene, [[0, 120, 100, 150], [540, 120, 100, 150]], 18, [0xfff3b0, 0xffffff]);
-      birds(scene, 20, 80, 7000);
+      // 건물 단면이 화면을 채우므로 구름·새 없이 양옆 도시 불빛만
+      twinkle(scene, [[0, 90, 30, 140], [612, 90, 28, 140]], 10, [0xfff3b0, 0xffffff]);
       break;
     case 'hanok_ext':
       clouds(scene, 4, 10, 80, 5, -95);
@@ -319,10 +462,21 @@ export function ambientFor(scene: Phaser.Scene, bg: string) {
       birds(scene, 20, 110, 6000);
       petals(scene, 0.6, 650);
       break;
-    case 'park':
-      balloons(scene, [60, 600], 1800);
-      twinkle(scene, [[20, 140, 130, 100], [460, 40, 130, 160]], 30, [0xffe066, 0xffffff, 0xff9fd8]);
+    case 'park': {
       clouds(scene, 3, 10, 70, 5, -95);
+      // 대관람차 (배경 그림에서 지운 자리) + 그 앞 가로등·풍선·차양은 다시 앞에 깐다
+      ferrisWheel(scene, 520, 118, 60, { cabins: 10, period: 24000, depth: -88, legY: 224 });
+      bgForeground(scene, 'park', [[505, 226], [511, 206], [545, 192], [543, 158], [590, 150], [597, 132], [640, 132], [640, 226]], -86);
+      // 회전목마: 말들이 번갈아 오르내리고, 차양 전구가 빙글빙글
+      [[14, 196, 30, 42], [44, 192, 32, 46], [80, 192, 34, 46], [116, 196, 32, 42], [146, 200, 22, 38]].forEach((r, i) => bobPart(scene, 'park', r as R, 2, 520, i * 260, -85));
+      const bulbs: [number, number][] = [];
+      for (let i = 0; i <= 16; i++) { const t = i / 16; bulbs.push([6 + t * 160, 148 + Math.sin(t * Math.PI) * 6]); }
+      chaseLights(scene, bulbs, [0xfff3b0, 0xffd23f, 0xff9fd8], 150, -84);
+      balloons(scene, [60, 600], 1800);
+      twinkle(scene, [[20, 110, 130, 60]], 18, [0xffe066, 0xffffff, 0xff9fd8]);
+      fountain(scene, 318, 212, 12, 14, -84);
+      break;
+    }
       break;
     case 'pcbang2':
       glow(scene, 320, 72, 70, 0x4fd8ff, 0.2, 0.5, 700, true, -84);

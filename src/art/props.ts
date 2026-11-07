@@ -90,6 +90,37 @@ export function eggTex(scene: Phaser.Scene) {
   });
 }
 
+// 손에 드는 큰 맥반석 계란 (껍질째)
+export function bigEggTex(scene: Phaser.Scene) {
+  return reg(scene, 'egg2', () => {
+    const pc = new PixelCanvas(16, 20);
+    pc.ellipse(8, 10.5, 6, 8, 0xa8622e);
+    pc.ellipse(7, 9.5, 4.5, 6, 0xc27a3e);
+    pc.ellipse(6, 7.5, 2, 3, 0xdc9a5a);
+    pc.set(5, 5, 0xf2c48a); pc.set(5, 6, 0xf2c48a); pc.set(6, 4, 0xf2c48a);
+    // 구운 얼룩
+    pc.set(10, 13, 0x7a4220); pc.set(11, 14, 0x7a4220); pc.set(9, 15, 0x8a4c24); pc.set(12, 10, 0x8a4c24);
+    pc.outline(0.4, 0x3a2414);
+    return pc;
+  });
+}
+
+// 이마로 깬 계란: 윗부분 껍질이 벗겨져 갈색 흰자가 보임
+export function peeledEggTex(scene: Phaser.Scene) {
+  return reg(scene, 'egg3', () => {
+    const pc = new PixelCanvas(16, 20);
+    pc.ellipse(8, 10.5, 6, 8, 0xd8a878);
+    pc.ellipse(7, 9.5, 4.5, 6, 0xecc49a);
+    pc.ellipse(6, 7, 2, 3, 0xfadcb8);
+    pc.set(5, 5, 0xffffff); pc.set(5, 6, 0xffffff);
+    // 아래쪽에 남은 껍질 (지그재그 깨진 선)
+    const zig = [12, 11, 12, 13, 12, 11, 12, 13, 12, 11, 12, 13];
+    for (let x = 2; x < 14; x++) for (let y = zig[x - 2]; y < 19; y++) if (pc.alpha(x, y) > 0) pc.set(x, y, y === zig[x - 2] ? 0x7a4220 : (x + y) % 5 === 0 ? 0x8a4c24 : 0xb06a32);
+    pc.outline(0.4, 0x3a2414);
+    return pc;
+  });
+}
+
 // 바퀴 달린 여행가방
 export function suitcaseTex(scene: Phaser.Scene, color: Color) {
   return reg(scene, `case_${color.toString(16)}`, () => {

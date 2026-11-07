@@ -10,7 +10,8 @@ export const W = 640;
 export const H = 360;
 // 실제 렌더 해상도 = 논리 해상도 × ZOOM (기본 2560x1440 → 화면 크기에 맞춰 부드럽게 축소되어 글자가 선명)
 // ?lo 를 붙이면 저사양용 1280x720
-export const ZOOM = new URLSearchParams(location.search).has('lo') ? 2 : 4;
+const _zq = new URLSearchParams(location.search);
+export const ZOOM = Number(_zq.get('zoom')) || (_zq.has('lo') ? 2 : 4);
 
 export function setupCamera(scene: Phaser.Scene) {
   scene.cameras.main.setZoom(ZOOM).centerOn(W / 2, H / 2);
@@ -510,6 +511,7 @@ export const ITEM_NAMES: Record<string, [string, string]> = {
   bananamilk: ['바나나우유', 'Banana milk'], cupramen2: ['컵라면', 'Cup ramyeon'], cheese: ['치즈', 'Cheese'], samgak: ['삼각김밥', 'Triangle gimbap'],
   icecream: ['아이스크림', 'Ice cream'], sausage: ['소시지', 'Sausage'], cookies: ['쿠키', 'Cookies'], tteokbokki: ['떡볶이', 'Tteokbokki'],
   chips: ['과자', 'Chips'], donut: ['도넛', 'Donut'], icedcoffee: ['아이스커피', 'Iced coffee'], strawmilk: ['딸기우유', 'Strawberry milk'],
+  homerunball: ['홈런볼', 'Home Run Ball'], bluelemonade: ['블루레모네이드', 'Blue lemonade'], milkis: ['밀키스', 'Milkis'], bluemix: ['블루레모네이드 밀키스', 'Blue lemonade Milkis'],
   bungeo: ['붕어빵', 'Bungeoppang'], sportsdrink: ['이온음료', 'Sports drink'], oj: ['오렌지주스', 'Orange juice'], popsicle: ['아이스바', 'Ice pop'],
 };
 export const itemName = (id: string) => { const n = ITEM_NAMES[id]; return n ? `${n[0]} ${n[1]}` : id; };
@@ -686,21 +688,22 @@ export function stageBanner(scene: Phaser.Scene, lv: number) {
 export async function missionClear(scene: Phaser.Scene, got = 3) {
   sfx.clear();
   const band = scene.add.graphics({ x: W / 2, y: 128 }).setDepth(979);
-  band.fillStyle(0x070a1a, 0.66); band.fillRect(-W, -52, W * 2, 104);
-  band.fillStyle(PAL.acc, 1); band.fillRect(-W, -52, W * 2, 0.75); band.fillRect(-W, 51.25, W * 2, 0.75);
+  // 띠 안에 모든 글자가 여유 있게 들어가도록 높이 128
+  band.fillStyle(0x070a1a, 0.7); band.fillRect(-W, -64, W * 2, 128);
+  band.fillStyle(PAL.acc, 1); band.fillRect(-W, -64, W * 2, 1); band.fillRect(-W, 63, W * 2, 1);
   band.setScale(1, 0);
   scene.tweens.add({ targets: band, scaleY: 1, duration: 180, ease: 'Quad.Out' });
   const c = scene.add.container(W / 2, 128).setDepth(980);
-  const label = txt(scene, 0, -44, 'MISSION CLEAR  ·  미션 완료', { px: TYPE.cap + 0.5, weight: 800, color: ACC, spacing: 2 }).setOrigin(0.5, 0);
+  const label = txt(scene, 0, -54, 'MISSION CLEAR  ·  미션 완료', { px: TYPE.cap + 0.5, weight: 800, color: ACC, spacing: 2 }).setOrigin(0.5, 0);
   const stars = [-36, 0, 36].map((dx, i) => {
-    const s = starIcon(scene, dx, -12, i < got, 3);
+    const s = starIcon(scene, dx, -22, i < got, 3);
     s.setAlpha(0);
-    scene.tweens.add({ targets: s, alpha: 1, y: { from: -22, to: -12 }, delay: 150 + i * 140, duration: 220, ease: 'Back.Out', onStart: () => { if (i < got) sfx.coin(); } });
+    scene.tweens.add({ targets: s, alpha: 1, y: { from: -32, to: -22 }, delay: 150 + i * 140, duration: 220, ease: 'Back.Out', onStart: () => { if (i < got) sfx.coin(); } });
     return s;
   });
   const grade = got >= 3 ? ['PERFECT', '완벽해요!'] : got === 2 ? ['GREAT', '잘했어요!'] : ['GOOD', '좋아요!'];
-  const g1 = bigText(scene, 0, 22, grade[0], 2, got >= 3 ? GOLD : TXT, '#151a33', got >= 3 ? '#8a5a10' : '#3c4674');
-  const g2 = txt(scene, 0, 38, grade[1], { px: TYPE.body, color: EN }).setOrigin(0.5, 0);
+  const g1 = bigText(scene, 0, 14, grade[0], 2, got >= 3 ? GOLD : TXT, '#151a33', got >= 3 ? '#8a5a10' : '#3c4674');
+  const g2 = txt(scene, 0, 34, grade[1], { px: TYPE.body, color: EN }).setOrigin(0.5, 0);
   c.add([label, ...stars, g1, g2]);
   c.setAlpha(0);
   scene.tweens.add({ targets: c, alpha: 1, duration: 200 });

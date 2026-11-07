@@ -15,7 +15,9 @@ function captureSink(): Plugin {
         req.on('end', () => {
           const dir = path.resolve(__dirname, 'captures');
           fs.mkdirSync(dir, { recursive: true });
-          fs.writeFileSync(path.join(dir, name), Buffer.concat(chunks));
+          const u = new URL(req.url ?? '', 'http://x');
+          if (u.searchParams.has('append')) fs.appendFileSync(path.join(dir, name), Buffer.concat(chunks));
+          else fs.writeFileSync(path.join(dir, name), Buffer.concat(chunks));
           res.end('ok');
         });
       });

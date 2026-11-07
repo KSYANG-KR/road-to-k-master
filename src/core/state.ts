@@ -54,7 +54,7 @@ class GameState {
   xp = 0; // 현재 레벨 안에서의 XP
   cleared = new Set<string>();
   maxed = false;
-  hero = 'hana'; // 고른 캐릭터 id (캐릭터 선택에서 정함)
+  hero = 'mei'; // 고른 캐릭터 id (캐릭터 선택에서 정함)
   // 미션별 별점 (1~3)
   stars: Record<string, number> = {};
 

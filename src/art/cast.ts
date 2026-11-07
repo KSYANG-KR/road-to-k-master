@@ -49,8 +49,8 @@ export const CAST: Record<string, CharDef> = {
   },
 };
 
-// 콘티 공항 라인업 순서 + 주인공(하나)을 가운데에
-export const LINEUP = ['amara', 'mei', 'leo', 'sofia', 'hana', 'noah', 'emma', 'kofi', 'james'];
+// 콘티 공항 라인업 순서 (선택 가능한 8명)
+export const LINEUP = ['amara', 'mei', 'leo', 'sofia', 'noah', 'emma', 'kofi', 'james'];
 
 // 캐릭터 소개 (역할 영/한 + 한 줄 소개 한/영)
 export const PROFILE: Record<string, { role: [string, string]; bio: [string, string] }> = {
@@ -66,15 +66,28 @@ export const PROFILE: Record<string, { role: [string, string]; bio: [string, str
 };
 
 // ---- 주인공 선택 ----
-// 장면 스크립트는 주인공 자리를 'hana' 로 쓴다. 다른 캐릭터를 고르면 CAST 의 두 자리를 맞바꿔
-// 'hana' 자리에 고른 캐릭터가, 원래 그 캐릭터 자리에 하나가 들어가게 한다 (텍스처는 각자의 id 로 구워져 섞이지 않음)
+// 장면 스크립트는 주인공 자리를 'hana' 로 쓴다. CAST.hana 에는 고른 캐릭터가 들어간다.
+// 고정 출연진 목록에 주인공 본인이 또 있으면 pickCrew() 가 그 자리를 다른 친구로 바꿔 한 장면에 같은 사람이 둘 나오지 않게 한다.
 const ORIGINAL: Record<string, CharDef> = { ...CAST };
-export let HERO = 'hana';
+export let HERO = 'mei';
 export function setHero(id: string) {
   Object.assign(CAST, ORIGINAL);
-  HERO = CAST[id] ? id : 'hana';
-  if (HERO !== 'hana') { CAST.hana = ORIGINAL[HERO]; CAST[HERO] = ORIGINAL.hana; }
+  HERO = LINEUP.includes(id) ? id : 'mei';
+  CAST.hana = ORIGINAL[HERO];
 }
+setHero('mei');
+const SPARE = ['sofia', 'noah', 'emma', 'kofi', 'james', 'amara', 'leo', 'mei'];
+export function pickCrew(ids: string[]): string[] {
+  const used = new Set(ids);
+  return ids.map((id) => {
+    if (id !== HERO) return id;
+    const s = SPARE.find((k) => !used.has(k) && k !== HERO) ?? id;
+    used.add(s);
+    return s;
+  });
+}
+// 라인업(군중) 장면에서 이 사람이 주인공인지
+export const isHero = (id: string) => id === HERO || id === 'hana';
 export const heroName = () => CAST.hana.name;
 
 // ---- 미션/레벨별 의상 ----
